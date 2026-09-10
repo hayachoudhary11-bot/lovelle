@@ -1,0 +1,8 @@
+{
+  "cloudinaryPublicId": "lovelle/test-photo-001",
+  "url": "https://res.cloudinary.com/tmtzqmmh/image/upload/v1234567890/lovelle/test-photo-001.jpg",
+  "thumbUrl": "https://res.cloudinary.com/tmtzqmmh/image/upload/w_400/lovelle/test-photo-001.jpg",
+  "width": 1200,
+  "height": 800,
+  "caption": "A test gallery photo"
+}
