@@ -41,6 +41,17 @@ function pointsToPath(points: Point[]) {
   );
 }
 
+function isSameStroke(first: Stroke, second: Stroke) {
+  if (first._id && second._id) return first._id === second._id;
+  if (first.color !== second.color || first.strokeWidth !== second.strokeWidth || first.points.length !== second.points.length) {
+    return false;
+  }
+  return first.points.every((point, index) => {
+    const otherPoint = second.points[index];
+    return point.x === otherPoint.x && point.y === otherPoint.y;
+  });
+}
+
 export default function DrawingScreen() {
   const colors = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const { session } = useAuth();
@@ -79,7 +90,13 @@ export default function DrawingScreen() {
 
     const handleConnect = () => socket.emit('join-board');
     const handleStroke = (stroke: Stroke) => {
-      if (mounted) setStrokes((currentStrokes) => [...currentStrokes, stroke]);
+      if (mounted) {
+        setStrokes((currentStrokes) =>
+          currentStrokes.some((currentStroke) => isSameStroke(currentStroke, stroke))
+            ? currentStrokes
+            : [...currentStrokes, stroke],
+        );
+      }
     };
     const handleBoardCleared = () => {
       if (mounted) setStrokes([]);

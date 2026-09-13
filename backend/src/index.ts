@@ -11,6 +11,9 @@ import messagesRoutes from "./routes/messages";
 import photosRoutes from "./routes/photos";
 import eventsRoutes from "./routes/events";
 import tasksRoutes from "./routes/tasks";
+import promptsRoutes from "./routes/prompts";
+import challengesRoutes from "./routes/challenges";
+import couplesRoutes from "./routes/couples";
 import { registerDrawingSocket } from "./socket/drawing";
 
 // Load environment variables from .env file
@@ -72,6 +75,9 @@ app.use("/messages", messagesRoutes);
 app.use("/photos", photosRoutes);
 app.use("/events", eventsRoutes);
 app.use("/tasks", tasksRoutes);
+app.use("/prompts", promptsRoutes);
+app.use("/challenges", challengesRoutes);
+app.use("/couples", couplesRoutes);
 
 app.set("io", io);
 registerDrawingSocket(io);

@@ -25,12 +25,21 @@ type Message = {
   createdAt: string;
 };
 
+function getId(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && '_id' in value) {
+    return String((value as { _id: string })._id);
+  }
+  return '';
+}
+
 function normalizeMessage(message: Partial<Message> | null | undefined): Message | null {
-  if (!message || !message._id || !message.senderId || !message.text) return null;
+  const senderId = getId(message?.senderId);
+  if (!message || !message._id || !senderId || !message.text) return null;
   return {
     _id: String(message._id),
     coupleId: String(message.coupleId ?? ''),
-    senderId: String(message.senderId),
+    senderId,
     text: String(message.text),
     createdAt: String(message.createdAt ?? new Date().toISOString()),
   };
@@ -48,6 +57,7 @@ export default function MessagesScreen() {
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [connected, setConnected] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
@@ -92,6 +102,7 @@ export default function MessagesScreen() {
     socketRef.current = socket;
 
     const handleConnect = () => {
+      setConnected(true);
       socket.emit('join-board');
     };
     const handleIncomingMessage = (message: Partial<Message>) => {
@@ -106,8 +117,10 @@ export default function MessagesScreen() {
     socket.on('connect', handleConnect);
     socket.on('new-message', handleIncomingMessage);
     socket.on('connect_error', (connectError) => {
+      setConnected(false);
       if (mounted) setError(`Messages connection failed: ${connectError.message}`);
     });
+    socket.on('disconnect', () => setConnected(false));
 
     loadHistory();
 
@@ -129,7 +142,7 @@ export default function MessagesScreen() {
 
   const sendMessage = () => {
     const trimmedText = draft.trim();
-    if (!trimmedText || !session?.token || !socketRef.current) return;
+    if (!trimmedText || !session?.token || !socketRef.current || !connected) return;
 
     setError('');
     socketRef.current.emit(
@@ -149,7 +162,7 @@ export default function MessagesScreen() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
-        <Text style={styles.subtitle}>Keep it sweet</Text>
+        <Text style={styles.subtitle}>{connected ? 'Connected privately' : 'Connecting privately...'}</Text>
       </View>
 
       {loading ? (
@@ -187,11 +200,11 @@ export default function MessagesScreen() {
           value={draft}
           onChangeText={setDraft}
           placeholder="Type a message"
-          placeholderTextColor="#84759d"
+          placeholderTextColor="#c59bb9"
           multiline
           maxLength={500}
         />
-        <GradientButton style={[styles.sendButton, !draft.trim() && styles.sendButtonDisabled]} onPress={sendMessage} disabled={!draft.trim()}>
+        <GradientButton style={[styles.sendButton, (!draft.trim() || !connected) && styles.sendButtonDisabled]} onPress={sendMessage} disabled={!draft.trim() || !connected}>
           <Text style={styles.sendButtonText}>Send</Text>
         </GradientButton>
       </View>
@@ -200,31 +213,31 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4efff', paddingHorizontal: 20, paddingTop: 72 },
+  container: { flex: 1, backgroundColor: '#1f1025', paddingHorizontal: 20, paddingTop: 72 },
   header: { marginBottom: 12 },
-  title: { fontSize: 32, fontWeight: '700', color: '#302443' },
-  subtitle: { fontSize: 16, color: '#766889', marginTop: 4 },
+  title: { fontSize: 32, fontWeight: '700', color: '#fff1f7' },
+  subtitle: { fontSize: 16, color: '#d4b1d0', marginTop: 4 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   chatList: { paddingBottom: 10 },
-  empty: { textAlign: 'center', color: '#84759d', marginTop: 24 },
+  empty: { textAlign: 'center', color: '#c59bb9', marginTop: 24 },
   messageRow: { marginBottom: 12 },
   messageRowMine: { alignItems: 'flex-end' },
   messageRowPartner: { alignItems: 'flex-start' },
-  senderLabel: { fontSize: 12, color: '#806b9d', marginBottom: 4, marginLeft: 8 },
-  senderLabelSelf: { fontSize: 12, color: '#806b9d', marginBottom: 4, marginRight: 8 },
+  senderLabel: { fontSize: 12, color: '#d4a3c2', marginBottom: 4, marginLeft: 8 },
+  senderLabelSelf: { fontSize: 12, color: '#d4a3c2', marginBottom: 4, marginRight: 8 },
   bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  myBubble: { backgroundColor: '#7651b8', borderBottomRightRadius: 5, shadowColor: '#2e2050', shadowOpacity: 0.1, shadowRadius: 8, elevation: 2 },
-  partnerBubble: { backgroundColor: '#e5d9f4', borderBottomLeftRadius: 5 },
+  myBubble: { backgroundColor: '#d946b8', borderBottomRightRadius: 5, shadowColor: '#08040f', shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
+  partnerBubble: { backgroundColor: '#542c55', borderBottomLeftRadius: 5 },
   messageText: { fontSize: 16, lineHeight: 22 },
-  myMessageText: { color: '#f4efff' },
-  partnerMessageText: { color: '#302443' },
+  myMessageText: { color: '#fff1f7' },
+  partnerMessageText: { color: '#fff1f7' },
   timeStamp: { fontSize: 11, marginTop: 4 },
-  myTimeStamp: { color: 'rgba(255,250,243,0.8)', textAlign: 'right' },
-  partnerTimeStamp: { color: '#806b9d', textAlign: 'left' },
-  error: { color: '#9b496e', marginBottom: 8 },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, borderTopWidth: 1, borderTopColor: '#d7c8ea', paddingTop: 12, paddingBottom: 18 },
-  input: { flex: 1, maxHeight: 120, minHeight: 48, borderWidth: 1, borderColor: '#dfd1f1', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fcfaff', color: '#302443' },
-  sendButton: { backgroundColor: '#7651b8', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 12, shadowColor: '#2e2050', shadowOpacity: 0.12, shadowRadius: 8, elevation: 2 },
+  myTimeStamp: { color: 'rgba(255,241,247,0.8)', textAlign: 'right' },
+  partnerTimeStamp: { color: '#d4a3c2', textAlign: 'left' },
+  error: { color: '#ff9ac5', marginBottom: 8 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, borderTopWidth: 1, borderTopColor: '#693b69', paddingTop: 12, paddingBottom: 18 },
+  input: { flex: 1, maxHeight: 120, minHeight: 48, borderWidth: 1, borderColor: '#693b69', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#301934', color: '#fff1f7' },
+  sendButton: { backgroundColor: '#d946b8', borderRadius: 18, paddingHorizontal: 18, paddingVertical: 12, shadowColor: '#08040f', shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
   sendButtonDisabled: { opacity: 0.45 },
-  sendButtonText: { color: '#f4efff', fontWeight: '700' },
+  sendButtonText: { color: '#fff1f7', fontWeight: '700' },
 });

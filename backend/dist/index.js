@@ -16,6 +16,9 @@ const messages_1 = __importDefault(require("./routes/messages"));
 const photos_1 = __importDefault(require("./routes/photos"));
 const events_1 = __importDefault(require("./routes/events"));
 const tasks_1 = __importDefault(require("./routes/tasks"));
+const prompts_1 = __importDefault(require("./routes/prompts"));
+const challenges_1 = __importDefault(require("./routes/challenges"));
+const couples_1 = __importDefault(require("./routes/couples"));
 const drawing_2 = require("./socket/drawing");
 // Load environment variables from .env file
 dotenv_1.default.config();
@@ -65,6 +68,9 @@ app.use("/messages", messages_1.default);
 app.use("/photos", photos_1.default);
 app.use("/events", events_1.default);
 app.use("/tasks", tasks_1.default);
+app.use("/prompts", prompts_1.default);
+app.use("/challenges", challenges_1.default);
+app.use("/couples", couples_1.default);
 app.set("io", io);
 (0, drawing_2.registerDrawingSocket)(io);
 // Temporary sanity-check route to confirm Express is accepting routes at all

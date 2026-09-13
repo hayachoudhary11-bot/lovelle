@@ -2,17 +2,17 @@ import mongoose from "mongoose";
 export declare const PromptAnswer: mongoose.Model<{
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps, {}, {}, {
     id: string;
 }, mongoose.Document<unknown, {}, {
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps, {
     id: string;
 }, {
@@ -20,9 +20,9 @@ export declare const PromptAnswer: mongoose.Model<{
 }> & Omit<{
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps & {
     _id: mongoose.Types.ObjectId;
 } & {
@@ -34,15 +34,15 @@ export declare const PromptAnswer: mongoose.Model<{
 }, {
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps, mongoose.Document<unknown, {}, {
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps, {
     id: string;
 }, Omit<mongoose.DefaultSchemaOptions, "timestamps"> & {
@@ -50,9 +50,9 @@ export declare const PromptAnswer: mongoose.Model<{
 }> & Omit<{
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
 } & mongoose.DefaultTimestampProps & {
     _id: mongoose.Types.ObjectId;
 } & {
@@ -62,9 +62,9 @@ export declare const PromptAnswer: mongoose.Model<{
 }>, unknown, {
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
     createdAt: NativeDate;
     updatedAt: NativeDate;
 } & {
@@ -74,9 +74,9 @@ export declare const PromptAnswer: mongoose.Model<{
 }>, {
     date: NativeDate;
     coupleId: mongoose.Types.ObjectId;
+    promptId: mongoose.Types.ObjectId;
     answeredBy: mongoose.Types.ObjectId;
     answerText: string;
-    promptId: mongoose.Types.ObjectId;
     createdAt: NativeDate;
     updatedAt: NativeDate;
 } & {
