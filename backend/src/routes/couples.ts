@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.post("/featured-photo", async (req: Request, res: Response) => {
+const handleFeaturedPhoto = async (req: Request, res: Response) => {
   try {
     const { photoId } = req.body;
     const coupleId = req.user?.coupleId;
@@ -44,6 +44,8 @@ router.post("/featured-photo", async (req: Request, res: Response) => {
     console.error("Set featured photo error:", error.message);
     return res.status(500).json({ error: error.message || "Server error" });
   }
-});
+};
+router.post("/featured-photo", handleFeaturedPhoto);
+router.patch("/featured-photo", handleFeaturedPhoto);
 
 export default router;

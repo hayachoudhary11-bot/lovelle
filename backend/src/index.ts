@@ -47,13 +47,19 @@ const logRegisteredRoutes = () => {
 
 // ============ MIDDLEWARE ============
 
-// CORS: Allow requests from the mobile app (Expo uses http://localhost:8081 during dev)
-app.use(
-  cors({
-    origin: ["http://localhost:8081", "http://localhost:3000"], // Add your mobile app URL here
-    credentials: true,
-  }),
-);
+// CORS: Allow requests from all origins in development
+app.use(cors());
+
+// Request logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`📡 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(`📤 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
 
 // JSON parser: automatically parse request bodies as JSON
 app.use(express.json());
@@ -85,6 +91,12 @@ registerDrawingSocket(io);
 // Temporary sanity-check route to confirm Express is accepting routes at all
 app.get("/notes-test", (req, res) => {
   res.json({ ok: true, message: "Notes test route is working" });
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  console.log(`⚠️ 404 NOT FOUND: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
 // ============ START SERVER ============

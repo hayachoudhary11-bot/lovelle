@@ -111,21 +111,24 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!session?.token) return;
-      loadNotes(session.token).catch((error: Error) =>
-        setMessage(error.message),
-      );
-      loadCountdown(session.token).catch((error: Error) =>
-        setMessage(error.message),
-      );
-      loadFeaturedPhoto(session.token).catch((error: Error) =>
-        setMessage(error.message),
-      );
+      setMessage("");
+      loadNotes(session.token).catch((error: Error) => {
+        console.warn("[loadNotes error]:", error.message);
+        setMessage(error.message);
+      });
+      loadCountdown(session.token).catch((error: Error) => {
+        console.warn("[loadCountdown error]:", error.message);
+      });
+      loadFeaturedPhoto(session.token).catch((error: Error) => {
+        console.warn("[loadFeaturedPhoto error]:", error.message);
+      });
     }, [session?.token]),
   );
 
   const addNote = async () => {
     if (!session?.token || !newNote.trim()) return;
     setLoading(true);
+    setMessage("");
     try {
       const response = await fetch(`${API_BASE_URL}/notes`, {
         method: "POST",
@@ -157,6 +160,7 @@ export default function HomeScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            setMessage("");
             try {
               const response = await fetch(`${API_BASE_URL}/notes/${noteId}`, {
                 method: "DELETE",

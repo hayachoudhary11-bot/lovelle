@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "seed:prompts": "ts-node src/seedPrompts.ts",
     "seed:challenges": "ts-node src/seedChallenges.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:apis": "ts-node src/testAllApis.ts",
+    "test": "npm run test:apis"
   },
   "keywords": [],
   "author": "",

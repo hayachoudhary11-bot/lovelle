@@ -18,6 +18,32 @@ router.get("/strokes", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/strokes", async (req: Request, res: Response) => {
+  try {
+    const coupleId = req.user?.coupleId;
+    const userId = req.user?.userId;
+    if (!coupleId || !userId) return res.status(400).json({ error: "User is not in a couple" });
+
+    const { points, color, strokeWidth } = req.body;
+    if (!Array.isArray(points) || points.length === 0) {
+      return res.status(400).json({ error: "Points array is required" });
+    }
+
+    const stroke = await DrawingStroke.create({
+      coupleId,
+      points,
+      color: color || "#333",
+      strokeWidth: strokeWidth || 3,
+      createdBy: userId,
+    });
+
+    return res.status(201).json(stroke);
+  } catch (error: any) {
+    console.error("Create stroke error:", error.message);
+    return res.status(500).json({ error: error.message || "Server error" });
+  }
+});
+
 router.delete("/strokes", async (req: Request, res: Response) => {
   try {
     const coupleId = req.user?.coupleId;
