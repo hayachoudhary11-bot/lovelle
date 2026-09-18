@@ -1,4 +1,8 @@
-export const API_BASE_URL = "http://192.168.1.6:4000";
+const DEFAULT_LOCAL_HOST = "http://10.0.2.2:4000";
+const FALLBACK_LOCAL_HOST = "http://localhost:4000";
+const DEVICE_HOST = "http://192.168.1.25:4000";
+
+export const API_BASE_URL = __DEV__ ? DEFAULT_LOCAL_HOST : DEVICE_HOST;
 
 export async function getErrorMessage(response: Response): Promise<string> {
   try {
