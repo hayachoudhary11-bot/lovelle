@@ -1,8 +1,28 @@
+import Constants from "expo-constants";
+
 const DEFAULT_LOCAL_HOST = "http://10.0.2.2:4000";
 const FALLBACK_LOCAL_HOST = "http://localhost:4000";
-const DEVICE_HOST = "http://192.168.1.25:4000";
+const PRODUCTION_API_URL = "http://192.168.1.25:4000";
 
-export const API_BASE_URL = __DEV__ ? DEFAULT_LOCAL_HOST : DEVICE_HOST;
+function getDevApiBaseUrl(): string {
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    (Constants as any).expoGoConfig?.hostUri ??
+    (Constants as any).manifest?.debuggerHost ??
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+
+  if (typeof hostUri === "string" && hostUri.length > 0) {
+    const detectedIp = hostUri.split(":")[0].replace(/\[|\]/g, "");
+    if (detectedIp && detectedIp !== "localhost") {
+      return `http://${detectedIp}:4000`;
+    }
+  }
+
+  return DEFAULT_LOCAL_HOST;
+}
+
+export const API_BASE_URL = __DEV__ ? getDevApiBaseUrl() : PRODUCTION_API_URL;
+console.log("[API] resolved API_BASE_URL:", API_BASE_URL);
 
 export async function getErrorMessage(response: Response): Promise<string> {
   try {
