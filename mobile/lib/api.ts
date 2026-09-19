@@ -1,10 +1,17 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 const DEFAULT_LOCAL_HOST = "http://10.0.2.2:4000";
 const FALLBACK_LOCAL_HOST = "http://localhost:4000";
 const PRODUCTION_API_URL = "http://192.168.1.25:4000";
 
 function getDevApiBaseUrl(): string {
+  if (Platform.OS === "web") {
+    const webHostname =
+      typeof window !== "undefined" ? window.location.hostname : "localhost";
+    return `http://${webHostname}:4000`;
+  }
+
   const hostUri =
     Constants.expoConfig?.hostUri ??
     (Constants as any).expoGoConfig?.hostUri ??

@@ -41,6 +41,88 @@ type Photo = {
   thumbUrl: string;
 };
 
+type CoupleSummary = {
+  name?: string | null;
+  relationshipStartDate?: string | null;
+  createdAt?: string;
+  members?: Array<string | null>;
+};
+
+const FEATURE_WIDGETS = [
+  {
+    title: "Notes",
+    description: "Leave a little love",
+    route: "/?section=notes",
+    icon: "heart",
+    iconColor: "#f9d8ea",
+    tint: "#e6488f",
+  },
+  {
+    title: "Messages",
+    description: "Talk about today",
+    route: "/messages",
+    icon: "message.fill",
+    iconColor: "#e7dcfa",
+    tint: "#7651b8",
+  },
+  {
+    title: "Thumb touch",
+    description: "Feel close, right now.",
+    route: "/thumb-touch",
+    icon: "fingerprint",
+    iconColor: "#f5d7e6",
+    tint: "#d93688",
+  },
+  {
+    title: "Gallery",
+    description: "Keep the good bits",
+    route: "/gallery",
+    icon: "photo",
+    iconColor: "#fce8bd",
+    tint: "#9a6518",
+  },
+  {
+    title: "Drawing",
+    description: "Make something together",
+    route: "/drawing",
+    icon: "pencil",
+    iconColor: "#d8eee7",
+    tint: "#397d6a",
+  },
+  {
+    title: "To-Do",
+    description: "Make today feel easy",
+    route: "/todo",
+    icon: "checklist",
+    iconColor: "#f5d7e6",
+    tint: "#e6488f",
+  },
+  {
+    title: "Calendar",
+    description: "Look forward together",
+    route: "/calendar",
+    icon: "calendar",
+    iconColor: "#e3daf9",
+    tint: "#9a76c9",
+  },
+  {
+    title: "Prompts",
+    description: "Ask something lovely",
+    route: "/prompts",
+    icon: "questionmark.circle",
+    iconColor: "#f5dfb4",
+    tint: "#a96d20",
+  },
+  {
+    title: "Challenges",
+    description: "Grow closer, playfully",
+    route: "/challenges",
+    icon: "flag",
+    iconColor: "#d8eee7",
+    tint: "#397d6a",
+  },
+] as const;
+
 function getNearestCountdown(events: Event[]) {
   const now = Date.now();
   return events
@@ -60,17 +142,56 @@ function getDaysUntil(date: string) {
   );
 }
 
+function getTogetherParts(startDate: Date) {
+  const now = new Date();
+  const from = new Date(startDate);
+  from.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+
+  let years = now.getFullYear() - from.getFullYear();
+  let months = now.getMonth() - from.getMonth();
+  let days = now.getDate() - from.getDate();
+
+  if (days < 0) {
+    const previousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    days += previousMonth.getDate();
+    months -= 1;
+  }
+
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  return { years, months, days };
+}
+
 export default function HomeScreen() {
-  const colors = Colors[useColorScheme() === 'dark' ? 'dark' : 'light'];
+  const colors = Colors[useColorScheme() === "dark" ? "dark" : "light"];
   const { section } = useLocalSearchParams<{ section?: string }>();
-  const showNotes = section === 'notes';
+  const showNotes = section === "notes";
   const { session, signOut } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [countdown, setCountdown] = useState<Event | undefined>();
   const [featuredPhoto, setFeaturedPhoto] = useState<Photo | undefined>();
+  const [couple, setCouple] = useState<CoupleSummary | null>(null);
+  const [currentUserName, setCurrentUserName] = useState("You");
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const hasPartner = (couple?.members?.filter(Boolean).length ?? 0) > 1;
+  const startDate =
+    couple?.relationshipStartDate || couple?.createdAt
+      ? new Date(
+          couple?.relationshipStartDate ||
+            couple?.createdAt ||
+            new Date().toISOString(),
+        )
+      : new Date();
+  const anniversaryParts = getTogetherParts(startDate);
+  const userInitial = currentUserName.trim().charAt(0).toUpperCase() || "Y";
+  const partnerInitial = hasPartner ? "P" : "?";
 
   const loadNotes = async (authToken: string) => {
     const response = await fetch(`${API_BASE_URL}/notes`, {
@@ -106,6 +227,8 @@ export default function HomeScreen() {
         ? photos.find((photo) => photo._id === String(featuredPhotoId))
         : undefined,
     );
+    setCurrentUserName(coupleInfo.user?.name || "You");
+    setCouple(coupleInfo.couple || null);
   };
 
   useFocusEffect(
@@ -185,121 +308,193 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.homeBackground }]}>
-      <LinearGradient colors={[colors.gradientStart, colors.gradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+    <View
+      style={[styles.container, { backgroundColor: colors.homeBackground }]}
+    >
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
         <View style={styles.heroTopline}>
           <Text style={styles.heroEyebrow}>LOVELLE</Text>
           <Pressable onPress={signOut} hitSlop={10}>
             <Text style={styles.signOutHero}>Sign out</Text>
           </Pressable>
         </View>
-        <View pointerEvents="none" style={styles.heroHearts}>
+        <View style={[styles.heroHearts, { pointerEvents: "none" }]}>
           <IconSymbol name="heart" size={36} color="rgba(255,244,251,0.22)" />
           <IconSymbol name="heart" size={18} color="rgba(255,244,251,0.42)" />
           <IconSymbol name="heart" size={12} color="rgba(255,244,251,0.6)" />
         </View>
-        <Text style={styles.heroTitle}>{showNotes ? 'Your little love notes.' : 'Little moments, kept together.'}</Text>
-        <Text style={styles.heroSubtitle}>{showNotes ? 'A private place for words meant just for you two.' : 'Choose a little way to feel closer today.'}</Text>
+        <Text style={styles.heroTitle}>
+          {showNotes
+            ? "Your little love notes."
+            : "Little moments, kept together."}
+        </Text>
+        <Text style={styles.heroSubtitle}>
+          {showNotes
+            ? "A private place for words meant just for you two."
+            : "Choose a little way to feel closer today."}
+        </Text>
       </LinearGradient>
-      {!showNotes && <ScrollView style={styles.featureScroll} contentContainerStyle={styles.featureSection} showsVerticalScrollIndicator={false}>
-        <Text style={styles.featureEyebrow}>MAKE TIME FOR EACH OTHER</Text>
-        <Text style={[styles.featureTitle, { color: colors.homeText }]}>What do you feel like doing?</Text>
-        <View style={styles.featureGrid}>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/?section=notes')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#f9d8ea' }]}>
-              <IconSymbol name="heart" size={22} color={colors.loveAccent} />
+      {!showNotes && (
+        <ScrollView
+          style={styles.featureScroll}
+          contentContainerStyle={styles.featureSection}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.coupleHeaderRow}>
+            <View style={styles.partnerCell}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{userInitial}</Text>
+              </View>
+              <Text style={styles.partnerName}>{currentUserName}</Text>
             </View>
-            <Text style={[styles.featureCardTitle, { color: colors.homeText }]}>Notes</Text>
-            <Text style={[styles.featureCardDetail, { color: colors.homeMuted }]}>Leave a little love</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/messages')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#e7dcfa' }]}>
-              <IconSymbol name="message.fill" size={22} color={colors.gradientStart} />
+
+            <View style={styles.heartBadge}>
+              <IconSymbol name="heart" size={18} color="#fff5fb" />
             </View>
-            <Text style={[styles.featureCardTitle, { color: colors.homeText }]}>Chat</Text>
-            <Text style={[styles.featureCardDetail, { color: colors.homeMuted }]}>Talk about today</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/gallery')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#fce8bd' }]}>
-              <IconSymbol name="photo" size={22} color="#9a6518" />
+
+            <View style={styles.partnerCell}>
+              <View style={[styles.avatar, styles.partnerAvatar]}>
+                <Text style={styles.avatarText}>{partnerInitial}</Text>
+              </View>
+              <Text style={styles.partnerName}>
+                {hasPartner ? "Partner" : "Waiting"}
+              </Text>
             </View>
-            <Text style={[styles.featureCardTitle, { color: colors.homeText }]}>Memories</Text>
-            <Text style={[styles.featureCardDetail, { color: colors.homeMuted }]}>Keep the good bits</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/drawing')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#d8eee7' }]}>
-              <IconSymbol name="pencil" size={22} color="#397d6a" />
+          </View>
+
+          <View style={styles.anniversaryCard}>
+            <Text style={styles.anniversaryLabel}>Together for</Text>
+            <View style={styles.anniversaryRow}>
+              <View style={styles.anniversaryBox}>
+                <Text style={styles.anniversaryValue}>
+                  {anniversaryParts.years}
+                </Text>
+                <Text style={styles.anniversaryUnit}>Years</Text>
+              </View>
+              <View style={styles.anniversaryBox}>
+                <Text style={styles.anniversaryValue}>
+                  {anniversaryParts.months}
+                </Text>
+                <Text style={styles.anniversaryUnit}>Months</Text>
+              </View>
+              <View style={styles.anniversaryBox}>
+                <Text style={styles.anniversaryValue}>
+                  {anniversaryParts.days}
+                </Text>
+                <Text style={styles.anniversaryUnit}>Days</Text>
+              </View>
             </View>
-            <Text style={[styles.featureCardTitle, { color: colors.homeText }]}>Draw</Text>
-            <Text style={[styles.featureCardDetail, { color: colors.homeMuted }]}>Make something together</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/todo')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#f5d7e6' }]}><IconSymbol name="checklist" size={22} color={colors.loveAccent} /></View>
-            <Text style={styles.featureCardTitle}>Plans</Text><Text style={styles.featureCardDetail}>Make today feel easy</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/calendar')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#e3daf9' }]}><IconSymbol name="calendar" size={22} color="#9a76c9" /></View>
-            <Text style={styles.featureCardTitle}>Dates</Text><Text style={styles.featureCardDetail}>Look forward together</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/prompts')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#f5dfb4' }]}><IconSymbol name="heart" size={22} color="#a96d20" /></View>
-            <Text style={styles.featureCardTitle}>Prompts</Text><Text style={styles.featureCardDetail}>Ask something lovely</Text>
-          </Pressable>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/challenges')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#d8eee7' }]}><IconSymbol name="calendar" size={22} color="#397d6a" /></View>
-            <Text style={styles.featureCardTitle}>Challenges</Text><Text style={styles.featureCardDetail}>Grow closer, playfully</Text>
-          </Pressable>
-        </View>
-      </ScrollView>}
-      {showNotes && <View style={styles.notesSection}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.homeText }]}>Shared Notes</Text>
-        <Pressable onPress={() => router.replace('/')}><Text style={[styles.signOut, { color: colors.homeMuted }]}>All features</Text></Pressable>
-      </View>
-      {featuredPhoto && (
-        <View style={styles.photoFrame}>
-          <Image
-            source={{ uri: featuredPhoto.url || featuredPhoto.thumbUrl }}
-            style={styles.featuredImage}
-            contentFit="cover"
+          </View>
+
+          <Text style={styles.featureEyebrow}>MAKE TIME FOR EACH OTHER</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.featureWidgetRow}
+          >
+            {FEATURE_WIDGETS.map((feature) => (
+              <Pressable
+                key={feature.title}
+                style={styles.featureWidgetCard}
+                onPress={() => router.push(feature.route)}
+              >
+                <View
+                  style={[
+                    styles.featureWidgetIcon,
+                    { backgroundColor: feature.iconColor },
+                  ]}
+                >
+                  <IconSymbol
+                    name={feature.icon as any}
+                    size={22}
+                    color={feature.tint}
+                  />
+                </View>
+                <Text style={styles.featureWidgetTitle}>{feature.title}</Text>
+                <Text style={styles.featureWidgetDetail}>
+                  {feature.description}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </ScrollView>
+      )}
+      {showNotes && (
+        <View style={styles.notesSection}>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: colors.homeText }]}>
+              Shared Notes
+            </Text>
+            <Pressable onPress={() => router.replace("/")}>
+              <Text style={[styles.signOut, { color: colors.homeMuted }]}>
+                All features
+              </Text>
+            </Pressable>
+          </View>
+          {featuredPhoto && (
+            <View style={styles.photoFrame}>
+              <Image
+                source={{ uri: featuredPhoto.url || featuredPhoto.thumbUrl }}
+                style={styles.featuredImage}
+                contentFit="cover"
+              />
+            </View>
+          )}
+          {countdown && (
+            <View style={styles.countdown}>
+              <Text style={styles.countdownLabel}>Next countdown</Text>
+              <Text style={styles.countdownText}>
+                {getDaysUntil(countdown.date)} days until {countdown.title}
+              </Text>
+            </View>
+          )}
+          <View style={styles.addRow}>
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              placeholder="Write a note..."
+              value={newNote}
+              onChangeText={setNewNote}
+            />
+            <GradientButton
+              style={styles.button}
+              onPress={addNote}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Add</Text>
+            </GradientButton>
+          </View>
+          {!!message && <Text style={styles.error}>{message}</Text>}
+          <FlatList
+            data={notes}
+            keyExtractor={(note) => note._id}
+            contentContainerStyle={styles.list}
+            ListEmptyComponent={
+              <EmptyState message="Your shared story starts with a little note." />
+            }
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.note,
+                  {
+                    backgroundColor: colors.accentSoft,
+                    borderColor: colors.homeBorder,
+                  },
+                ]}
+              >
+                <Text style={styles.noteText}>{item.text}</Text>
+                <Pressable onPress={() => deleteNote(item._id)}>
+                  <Text style={styles.delete}>Delete</Text>
+                </Pressable>
+              </View>
+            )}
           />
         </View>
       )}
-      {countdown && (
-        <View style={styles.countdown}>
-          <Text style={styles.countdownLabel}>Next countdown</Text>
-          <Text style={styles.countdownText}>
-            {getDaysUntil(countdown.date)} days until {countdown.title}
-          </Text>
-        </View>
-      )}
-      <View style={styles.addRow}>
-        <TextInput
-          style={[styles.input, styles.noteInput]}
-          placeholder="Write a note..."
-          value={newNote}
-          onChangeText={setNewNote}
-        />
-        <GradientButton style={styles.button} onPress={addNote} disabled={loading}>
-          <Text style={styles.buttonText}>Add</Text>
-        </GradientButton>
-      </View>
-      {!!message && <Text style={styles.error}>{message}</Text>}
-      <FlatList
-        data={notes}
-        keyExtractor={(note) => note._id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={<EmptyState message="Your shared story starts with a little note." />}
-        renderItem={({ item }) => (
-          <View style={[styles.note, { backgroundColor: colors.accentSoft, borderColor: colors.homeBorder }]}>
-            <Text style={styles.noteText}>{item.text}</Text>
-            <Pressable onPress={() => deleteNote(item._id)}>
-              <Text style={styles.delete}>Delete</Text>
-            </Pressable>
-          </View>
-        )}
-      />
-      </View>}
     </View>
   );
 }
@@ -312,39 +507,178 @@ const styles = StyleSheet.create({
     backgroundColor: "#260f27",
     paddingBottom: 24,
   },
-  hero: { borderRadius: 28, padding: 22, marginBottom: 20, overflow: "hidden", shadowColor: "#e83e8c", shadowOpacity: 0.32, shadowRadius: 18, elevation: 5 },
-  heroTopline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 28 },
-  heroEyebrow: { color: "#f9d8ea", fontSize: 12, fontWeight: "800", letterSpacing: 1.5, marginBottom: 10 },
-  heroTitle: { color: "#fff8fc", fontSize: 26, lineHeight: 32, fontWeight: "800", maxWidth: "90%" },
-  heroSubtitle: { color: "#f9d8ea", fontSize: 15, lineHeight: 21, marginTop: 8, maxWidth: "88%" },
-  heroHearts: { position: "absolute", right: 22, bottom: 22, width: 58, height: 54, alignItems: "center", justifyContent: "center" },
+  hero: {
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 20,
+    overflow: "hidden",
+    boxShadow: "0px 10px 22px rgba(232, 62, 140, 0.28)",
+    elevation: 5,
+  },
+  heroTopline: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
+  },
+  heroEyebrow: {
+    color: "#f9d8ea",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  heroTitle: {
+    color: "#fff8fc",
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "800",
+    maxWidth: "90%",
+  },
+  heroSubtitle: {
+    color: "#f9d8ea",
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 8,
+    maxWidth: "88%",
+  },
+  heroHearts: {
+    position: "absolute",
+    right: 22,
+    bottom: 22,
+    width: 58,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   signOutHero: { color: "#fff4fb", fontSize: 12, fontWeight: "700" },
   featureScroll: { flex: 1 },
   featureSection: { paddingBottom: 28 },
-  featureEyebrow: { color: "#d8aeca", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, marginBottom: 5 },
-  featureTitle: { color: "#fff4fb", fontSize: 20, fontWeight: "800", marginBottom: 12 },
-  featureGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  featureCard: { width: "47.5%", minHeight: 112, backgroundColor: "#431d43", borderColor: "#6d315f", borderWidth: 1, borderRadius: 18, padding: 12, shadowColor: "#120712", shadowOpacity: 0.24, shadowRadius: 8, elevation: 2 },
-  featureIcon: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  featureCardTitle: { color: "#fff4fb", fontSize: 16, fontWeight: "800" },
-  featureCardDetail: { color: "#d8aeca", fontSize: 12, marginTop: 3 },
+  coupleHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 18,
+    paddingHorizontal: 4,
+  },
+  partnerCell: { alignItems: "center", flex: 1 },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#f5d7e6",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff7fb",
+    marginBottom: 8,
+  },
+  partnerAvatar: { backgroundColor: "#e3daf9" },
+  avatarText: { color: "#392148", fontSize: 18, fontWeight: "800" },
+  partnerName: { color: "#fff4fb", fontSize: 14, fontWeight: "700" },
+  heartBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8,
+  },
+  anniversaryCard: {
+    backgroundColor: "#431d43",
+    borderColor: "#6d315f",
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+    boxShadow: "0px 6px 18px rgba(18, 7, 18, 0.2)",
+    elevation: 3,
+  },
+  anniversaryLabel: {
+    color: "#f7d8ea",
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    marginBottom: 14,
+  },
+  anniversaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  anniversaryBox: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 92,
+  },
+  anniversaryValue: { color: "#fff4fb", fontSize: 26, fontWeight: "800" },
+  anniversaryUnit: {
+    color: "#d8aeca",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  featureEyebrow: {
+    color: "#d8aeca",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  featureWidgetRow: { paddingRight: 12, paddingBottom: 8 },
+  featureWidgetCard: {
+    width: 166,
+    minHeight: 140,
+    backgroundColor: "#431d43",
+    borderColor: "#6d315f",
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 14,
+    marginRight: 12,
+    boxShadow: "0px 5px 12px rgba(18, 7, 18, 0.18)",
+    elevation: 2,
+  },
+  featureWidgetIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  featureWidgetTitle: {
+    color: "#fff4fb",
+    fontSize: 17,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  featureWidgetDetail: { color: "#d8aeca", fontSize: 12, lineHeight: 18 },
   notesSection: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  title: { fontSize: 34, lineHeight: 40, fontWeight: "700", color: "#fff1f7", marginBottom: 8 },
+  title: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: "700",
+    color: "#fff1f7",
+    marginBottom: 8,
+  },
   signOut: { color: "#62409d", fontWeight: "700" },
   photoFrame: {
     backgroundColor: "#351526",
     borderColor: "#70324e",
     borderWidth: 1,
     borderRadius: 18,
-    shadowColor: "#2e2050",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: "0px 5px 12px rgba(46, 32, 80, 0.12)",
     elevation: 3,
     padding: 6,
     marginBottom: 20,
@@ -377,10 +711,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: "#7651b8",
     borderRadius: 18,
-    shadowColor: "#2e2050",
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    boxShadow: "0px 5px 12px rgba(46, 32, 80, 0.18)",
     elevation: 3,
     padding: 14,
     alignItems: "center",
@@ -401,6 +732,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  noteText: { flex: 1, color: "#302443", fontSize: 18, lineHeight: 24, fontWeight: "700" },
+  noteText: {
+    flex: 1,
+    color: "#302443",
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "700",
+  },
   delete: { color: "#9b496e", fontWeight: "700" },
 });
