@@ -72,6 +72,8 @@ export default function TabLayout() {
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="gallery" options={{ href: null }} />
       <Tabs.Screen name="prompts" options={{ href: null }} />
+      <Tabs.Screen name="cards" options={{ href: null }} />
+      <Tabs.Screen name="cards-detail" options={{ href: null }} />
       <Tabs.Screen name="challenges" options={{ href: null }} />
       <Tabs.Screen name="drawing" options={{ href: null }} />
       <Tabs.Screen name="thumb-touch" options={{ href: null }} />

@@ -106,6 +106,14 @@ const FEATURE_WIDGETS = [
     tint: "#9a76c9",
   },
   {
+    title: "Cards",
+    description: "spark a conversation",
+    route: "/cards",
+    icon: "gamepad",
+    iconColor: "#dff8dc",
+    tint: "#3a8f6a",
+  },
+  {
     title: "Prompts",
     description: "Ask something lovely",
     route: "/prompts",
@@ -457,6 +465,7 @@ export default function HomeScreen() {
             <TextInput
               style={[styles.input, styles.noteInput]}
               placeholder="Write a note..."
+              placeholderTextColor="#d7bfd1"
               value={newNote}
               onChangeText={setNewNote}
             />
@@ -669,10 +678,10 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 40,
     fontWeight: "700",
-    color: "#fff1f7",
+    color: "#fff5fb",
     marginBottom: 8,
   },
-  signOut: { color: "#62409d", fontWeight: "700" },
+  signOut: { color: "#f8d7ea", fontWeight: "700" },
   photoFrame: {
     backgroundColor: "#351526",
     borderColor: "#70324e",
@@ -691,13 +700,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   countdownLabel: {
-    color: "#ff8fbe",
+    color: "#ffd3e6",
     fontSize: 13,
     fontWeight: "700",
     textTransform: "uppercase",
     marginBottom: 5,
   },
-  countdownText: { color: "#fff1f7", fontSize: 18, fontWeight: "700" },
+  countdownText: { color: "#fff9fc", fontSize: 18, fontWeight: "700" },
   subtitle: { fontSize: 16, color: "#766889", marginBottom: 24 },
   input: {
     backgroundColor: "#fcfaff",
@@ -734,10 +743,10 @@ const styles = StyleSheet.create({
   },
   noteText: {
     flex: 1,
-    color: "#302443",
+    color: "#fff5fb",
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "700",
   },
-  delete: { color: "#9b496e", fontWeight: "700" },
+  delete: { color: "#ffd8eb", fontWeight: "700" },
 });

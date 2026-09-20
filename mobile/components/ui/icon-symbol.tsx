@@ -1,22 +1,40 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { SymbolWeight, SymbolViewProps } from "expo-symbols";
+import { SymbolWeight } from "expo-symbols";
 import { ComponentProps } from "react";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
-type IconMapping = Record<
-  SymbolViewProps["name"],
-  ComponentProps<typeof MaterialIcons>["name"]
->;
-type IconSymbolName = keyof typeof MAPPING;
+type IconSymbolName =
+  | "house.fill"
+  | "message.fill"
+  | "paperplane.fill"
+  | "checklist"
+  | "calendar"
+  | "gallery"
+  | "prompts"
+  | "challenges"
+  | "drawing"
+  | "settings"
+  | "heart"
+  | "photo"
+  | "pencil"
+  | "fingerprint"
+  | "questionmark.circle"
+  | "flag"
+  | "gamepad"
+  | "gearshape"
+  | "chevron.left.forwardslash.chevron.right"
+  | "chevron.right";
+
+type IconMapping = Record<IconSymbolName, ComponentProps<typeof MaterialIcons>["name"]>;
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
  * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
-const MAPPING = {
+const MAPPING: IconMapping = {
   "house.fill": "home",
   "message.fill": "chat",
   "paperplane.fill": "send",
@@ -33,12 +51,13 @@ const MAPPING = {
   fingerprint: "fingerprint",
   "questionmark.circle": "help-outline",
   flag: "sports-score",
+  gamepad: "sports-esports",
   gearshape: "settings",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",
-} as IconMapping;
+};
 
-const OUTLINE_MAPPING = {
+const OUTLINE_MAPPING: IconMapping = {
   "house.fill": "home",
   "message.fill": "chat-bubble-outline",
   "paperplane.fill": "send",
@@ -55,8 +74,11 @@ const OUTLINE_MAPPING = {
   fingerprint: "fingerprint",
   "questionmark.circle": "help-outline",
   flag: "sports-score",
+  gamepad: "sports-esports",
   gearshape: "settings",
-} as IconMapping;
+  "chevron.left.forwardslash.chevron.right": "code",
+  "chevron.right": "chevron-right",
+};
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
