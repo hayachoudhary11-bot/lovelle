@@ -69,6 +69,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="messages" options={{ href: null }} />
       <Tabs.Screen name="todo" options={{ href: null }} />
+      <Tabs.Screen name="bucket-list" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="gallery" options={{ href: null }} />
       <Tabs.Screen name="prompts" options={{ href: null }} />
@@ -77,6 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen name="challenges" options={{ href: null }} />
       <Tabs.Screen name="drawing" options={{ href: null }} />
       <Tabs.Screen name="thumb-touch" options={{ href: null }} />
+      <Tabs.Screen name="affection" options={{ href: null }} />
     </Tabs>
   );
 }

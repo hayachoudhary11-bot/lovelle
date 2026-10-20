@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Alert,
+  Animated,
   FlatList,
   Pressable,
   ScrollView,
@@ -39,6 +40,7 @@ type Photo = {
   _id: string;
   url: string;
   thumbUrl: string;
+  createdAt?: string;
 };
 
 type CoupleSummary = {
@@ -96,6 +98,22 @@ const FEATURE_WIDGETS = [
     icon: "checklist",
     iconColor: "#f5d7e6",
     tint: "#e6488f",
+  },
+  {
+    title: "Bucket List",
+    description: "Dream a little bigger",
+    route: "/bucket-list",
+    icon: "list.bullet",
+    iconColor: "#dff3ff",
+    tint: "#4c8ed9",
+  },
+  {
+    title: "Affection",
+    description: "Send a warm little spark",
+    route: "/affection",
+    icon: "heart",
+    iconColor: "#fbd8e7",
+    tint: "#d14685",
   },
   {
     title: "Calendar",
@@ -182,11 +200,26 @@ export default function HomeScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [countdown, setCountdown] = useState<Event | undefined>();
   const [featuredPhoto, setFeaturedPhoto] = useState<Photo | undefined>();
+  const [galleryPhotos, setGalleryPhotos] = useState<Photo[]>([]);
+  const [coupleStatus, setCoupleStatus] = useState<{
+    currentStreak?: number;
+    lastActivityAt?: string | null;
+  } | null>(null);
   const [couple, setCouple] = useState<CoupleSummary | null>(null);
   const [currentUserName, setCurrentUserName] = useState("You");
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const entranceAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entranceAnimation, {
+      toValue: 1,
+      duration: 420,
+      delay: 80,
+      useNativeDriver: true,
+    }).start();
+  }, [entranceAnimation]);
 
   const hasPartner = (couple?.members?.filter(Boolean).length ?? 0) > 1;
   const startDate =
@@ -200,6 +233,14 @@ export default function HomeScreen() {
   const anniversaryParts = getTogetherParts(startDate);
   const userInitial = currentUserName.trim().charAt(0).toUpperCase() || "Y";
   const partnerInitial = hasPartner ? "P" : "?";
+  const latestGalleryPhotos = [...galleryPhotos]
+    .sort(
+      (firstPhoto, secondPhoto) =>
+        new Date(secondPhoto.createdAt || 0).getTime() -
+        new Date(firstPhoto.createdAt || 0).getTime(),
+    )
+    .slice(0, 2);
+  const latestGalleryPhoto = latestGalleryPhotos[0];
 
   const loadNotes = async (authToken: string) => {
     const response = await fetch(`${API_BASE_URL}/notes`, {
@@ -218,23 +259,38 @@ export default function HomeScreen() {
   };
 
   const loadFeaturedPhoto = async (authToken: string) => {
-    const [coupleResponse, photosResponse] = await Promise.all([
+    const [coupleResponse, photosResponse, statusResponse] = await Promise.all([
       fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders(authToken) }),
       fetch(`${API_BASE_URL}/photos`, { headers: authHeaders(authToken) }),
+      fetch(`${API_BASE_URL}/couples/status`, { headers: authHeaders(authToken) }),
     ]);
+
+    try {
+      await fetch(`${API_BASE_URL}/couples/activity`, {
+        method: "POST",
+        headers: authHeaders(authToken),
+      });
+    } catch {
+      // Ignore streak sync failures here; the home screen should still render.
+    }
     if (!coupleResponse.ok)
       throw new Error(await getErrorMessage(coupleResponse));
     if (!photosResponse.ok)
       throw new Error(await getErrorMessage(photosResponse));
+    if (!statusResponse.ok)
+      throw new Error(await getErrorMessage(statusResponse));
 
     const coupleInfo = await coupleResponse.json();
     const photos: Photo[] = await photosResponse.json();
+    const statusResult = await statusResponse.json();
     const featuredPhotoId = coupleInfo.couple?.featuredPhotoId;
+    setGalleryPhotos(photos);
     setFeaturedPhoto(
       featuredPhotoId
         ? photos.find((photo) => photo._id === String(featuredPhotoId))
         : undefined,
     );
+    setCoupleStatus(statusResult.couple || null);
     setCurrentUserName(coupleInfo.user?.name || "You");
     setCouple(coupleInfo.couple || null);
   };
@@ -273,6 +329,14 @@ export default function HomeScreen() {
       const createdNote = await response.json();
       setNotes((currentNotes) => [createdNote, ...currentNotes]);
       setNewNote("");
+      try {
+        await fetch(`${API_BASE_URL}/couples/activity`, {
+          method: "POST",
+          headers: authHeaders(session.token),
+        });
+      } catch {
+        // Ignore streak sync failures; note creation still succeeded.
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not add note");
     } finally {
@@ -319,6 +383,11 @@ export default function HomeScreen() {
     <View
       style={[styles.container, { backgroundColor: colors.homeBackground }]}
     >
+      <View style={styles.glassBackground} pointerEvents="none">
+        <View style={[styles.glassBlob, styles.glassBlobOne]} />
+        <View style={[styles.glassBlob, styles.glassBlobTwo]} />
+        <View style={[styles.glassBlob, styles.glassBlobThree]} />
+      </View>
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
@@ -348,89 +417,187 @@ export default function HomeScreen() {
         </Text>
       </LinearGradient>
       {!showNotes && (
-        <ScrollView
-          style={styles.featureScroll}
-          contentContainerStyle={styles.featureSection}
-          showsVerticalScrollIndicator={false}
+        <Animated.View
+          style={[
+            styles.homeContent,
+            {
+              opacity: entranceAnimation,
+              transform: [
+                {
+                  translateY: entranceAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [18, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
         >
-          <View style={styles.coupleHeaderRow}>
-            <View style={styles.partnerCell}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{userInitial}</Text>
-              </View>
-              <Text style={styles.partnerName}>{currentUserName}</Text>
-            </View>
-
-            <View style={styles.heartBadge}>
-              <IconSymbol name="heart" size={18} color="#fff5fb" />
-            </View>
-
-            <View style={styles.partnerCell}>
-              <View style={[styles.avatar, styles.partnerAvatar]}>
-                <Text style={styles.avatarText}>{partnerInitial}</Text>
-              </View>
-              <Text style={styles.partnerName}>
-                {hasPartner ? "Partner" : "Waiting"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.anniversaryCard}>
-            <Text style={styles.anniversaryLabel}>Together for</Text>
-            <View style={styles.anniversaryRow}>
-              <View style={styles.anniversaryBox}>
-                <Text style={styles.anniversaryValue}>
-                  {anniversaryParts.years}
-                </Text>
-                <Text style={styles.anniversaryUnit}>Years</Text>
-              </View>
-              <View style={styles.anniversaryBox}>
-                <Text style={styles.anniversaryValue}>
-                  {anniversaryParts.months}
-                </Text>
-                <Text style={styles.anniversaryUnit}>Months</Text>
-              </View>
-              <View style={styles.anniversaryBox}>
-                <Text style={styles.anniversaryValue}>
-                  {anniversaryParts.days}
-                </Text>
-                <Text style={styles.anniversaryUnit}>Days</Text>
-              </View>
-            </View>
-          </View>
-
-          <Text style={styles.featureEyebrow}>MAKE TIME FOR EACH OTHER</Text>
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featureWidgetRow}
+            style={styles.featureScroll}
+            contentContainerStyle={styles.featureSection}
+            showsVerticalScrollIndicator={false}
           >
-            {FEATURE_WIDGETS.map((feature) => (
-              <Pressable
-                key={feature.title}
-                style={styles.featureWidgetCard}
-                onPress={() => router.push(feature.route)}
-              >
-                <View
-                  style={[
-                    styles.featureWidgetIcon,
-                    { backgroundColor: feature.iconColor },
-                  ]}
-                >
-                  <IconSymbol
-                    name={feature.icon as any}
-                    size={22}
-                    color={feature.tint}
-                  />
+            <View style={styles.coupleHeaderRow}>
+              <View style={styles.partnerCell}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{userInitial}</Text>
                 </View>
-                <Text style={styles.featureWidgetTitle}>{feature.title}</Text>
-                <Text style={styles.featureWidgetDetail}>
-                  {feature.description}
+                <Text style={styles.partnerName}>{currentUserName}</Text>
+              </View>
+
+              <View style={styles.heartBadge}>
+                <IconSymbol name="heart" size={18} color="#fff5fb" />
+              </View>
+
+              <View style={styles.streakBadge}>
+                <IconSymbol name="flame" size={14} color="#ffb86b" />
+                <Text style={styles.streakValue}>{coupleStatus?.currentStreak ?? 0}</Text>
+              </View>
+
+              <View style={styles.partnerCell}>
+                <View style={[styles.avatar, styles.partnerAvatar]}>
+                  <Text style={styles.avatarText}>{partnerInitial}</Text>
+                </View>
+                <Text style={styles.partnerName}>
+                  {hasPartner ? "Partner" : "Waiting"}
                 </Text>
-              </Pressable>
-            ))}
+              </View>
+
+              <View style={styles.statPillStack}>
+                <View style={styles.statChip}>
+                  <View style={[styles.statChipIcon, { backgroundColor: "#f8d9eb" }]}>
+                    <IconSymbol name="heart" size={12} color="#9d3b75" />
+                  </View>
+                  <Text style={styles.statChipText}>{notes.length}</Text>
+                </View>
+                <View style={styles.statChip}>
+                  <View style={[styles.statChipIcon, { backgroundColor: "#f5d7a1" }]}>
+                    <IconSymbol name="photo" size={12} color="#8c5f18" />
+                  </View>
+                  <Text style={styles.statChipText}>{galleryPhotos.length}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.anniversaryPhotoStack}>
+              {latestGalleryPhotos.length > 0 ? (
+                latestGalleryPhotos.map((photo, index) => (
+                  <View
+                    key={photo._id}
+                    style={[
+                      styles.partnerThumbFrame,
+                      index > 0 ? styles.partnerThumbFrameSecondary : null,
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: photo.thumbUrl || photo.url }}
+                      style={styles.partnerThumb}
+                      contentFit="cover"
+                    />
+                  </View>
+                ))
+              ) : (
+                <>
+                  <View style={styles.avatarMini}>
+                    <Text style={styles.avatarText}>{userInitial}</Text>
+                  </View>
+                  <View style={[styles.avatarMini, styles.partnerAvatarMini]}>
+                    <Text style={styles.avatarText}>{partnerInitial}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            <View style={styles.anniversaryCard}>
+              <LinearGradient
+                colors={["rgba(255, 187, 225, 0.15)", "rgba(139, 92, 197, 0.12)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.anniversaryGlow}
+              />
+              <View style={styles.anniversaryPattern} pointerEvents="none">
+                <View style={styles.patternOrbOne} />
+                <View style={styles.patternOrbTwo} />
+                <View style={styles.patternOrbThree} />
+              </View>
+              <Text style={styles.anniversaryLabel}>Together for</Text>
+              <View style={styles.anniversaryRow}>
+                <View style={styles.anniversaryBox}>
+                  <Text style={styles.anniversaryValue}>
+                    {anniversaryParts.years}
+                  </Text>
+                  <Text style={styles.anniversaryUnit}>Years</Text>
+                </View>
+                <View style={styles.anniversaryBox}>
+                  <Text style={styles.anniversaryValue}>
+                    {anniversaryParts.months}
+                  </Text>
+                  <Text style={styles.anniversaryUnit}>Months</Text>
+                </View>
+                <View style={styles.anniversaryBox}>
+                  <Text style={styles.anniversaryValue}>
+                    {anniversaryParts.days}
+                  </Text>
+                  <Text style={styles.anniversaryUnit}>Days</Text>
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.featureEyebrow}>MAKE TIME FOR EACH OTHER</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.featureWidgetRow}
+            >
+              {FEATURE_WIDGETS.map((feature) => {
+                const isGalleryCard = feature.title === "Gallery";
+                const hasGalleryPreview = isGalleryCard && !!latestGalleryPhoto;
+
+                return (
+                  <Pressable
+                    key={feature.title}
+                    style={[
+                      styles.featureWidgetCard,
+                      hasGalleryPreview && styles.featureWidgetCardPreview,
+                    ]}
+                    onPress={() => router.push(feature.route)}
+                  >
+                    {hasGalleryPreview && (
+                      <>
+                        <Image
+                          source={{
+                            uri:
+                              latestGalleryPhoto.thumbUrl || latestGalleryPhoto.url,
+                          }}
+                          style={styles.featureWidgetPreviewImage}
+                          contentFit="cover"
+                        />
+                        <View style={styles.featureWidgetPreviewOverlay} />
+                      </>
+                    )}
+                    <View
+                      style={[
+                        styles.featureWidgetIcon,
+                        { backgroundColor: feature.iconColor },
+                      ]}
+                    >
+                      <IconSymbol
+                        name={feature.icon as any}
+                        size={22}
+                        color={feature.tint}
+                      />
+                    </View>
+                    <Text style={styles.featureWidgetTitle}>{feature.title}</Text>
+                    <Text style={styles.featureWidgetDetail}>
+                      {feature.description}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </ScrollView>
-        </ScrollView>
+        </Animated.View>
       )}
       {showNotes && (
         <View style={styles.notesSection}>
@@ -515,12 +682,58 @@ const styles = StyleSheet.create({
     paddingTop: 72,
     backgroundColor: "#260f27",
     paddingBottom: 24,
+    position: "relative",
+  },
+  glassBackground: {
+    ...StyleSheet.absoluteFill,
+    overflow: "hidden",
+  },
+  glassBlob: {
+    position: "absolute",
+    borderRadius: 999,
+    opacity: 0.9,
+  },
+  glassBlobOne: {
+    width: 260,
+    height: 260,
+    top: -40,
+    left: -30,
+    backgroundColor: "rgba(255, 184, 220, 0.23)",
+    shadowColor: "#ffb8d8",
+    shadowOpacity: 0.28,
+    shadowRadius: 40,
+    elevation: 4,
+  },
+  glassBlobTwo: {
+    width: 300,
+    height: 300,
+    right: -40,
+    top: 120,
+    backgroundColor: "rgba(185, 140, 255, 0.18)",
+    shadowColor: "#b98cff",
+    shadowOpacity: 0.26,
+    shadowRadius: 48,
+    elevation: 4,
+  },
+  glassBlobThree: {
+    width: 200,
+    height: 200,
+    left: 110,
+    bottom: -30,
+    backgroundColor: "rgba(255, 146, 201, 0.12)",
+    shadowColor: "#ff93c9",
+    shadowOpacity: 0.2,
+    shadowRadius: 36,
+    elevation: 2,
   },
   hero: {
     borderRadius: 28,
     padding: 22,
     marginBottom: 20,
     overflow: "hidden",
+    backgroundColor: "rgba(79, 45, 90, 0.54)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
     boxShadow: "0px 10px 22px rgba(232, 62, 140, 0.28)",
     elevation: 5,
   },
@@ -561,6 +774,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   signOutHero: { color: "#fff4fb", fontSize: 12, fontWeight: "700" },
+  homeContent: { flex: 1 },
   featureScroll: { flex: 1 },
   featureSection: { paddingBottom: 28 },
   coupleHeaderRow: {
@@ -594,17 +808,132 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginHorizontal: 8,
   },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 184, 107, 0.14)",
+    borderColor: "rgba(255, 184, 107, 0.4)",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 8,
+    gap: 4,
+  },
+  streakValue: {
+    color: "#fff4fb",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  statPillStack: {
+    marginLeft: 10,
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  statChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  statChipIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statChipText: {
+    color: "#fff4fb",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  anniversaryPhotoStack: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+    marginTop: -2,
+  },
+  partnerThumbFrame: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: "#fff4fb",
+    overflow: "hidden",
+    backgroundColor: "#f5d7e6",
+  },
+  partnerThumbFrameSecondary: {
+    marginLeft: -8,
+  },
+  partnerThumb: { width: "100%", height: "100%" },
+  avatarMini: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#f5d7e6",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff7fb",
+  },
+  partnerAvatarMini: { backgroundColor: "#e3daf9", marginLeft: -8 },
   anniversaryCard: {
-    backgroundColor: "#431d43",
-    borderColor: "#6d315f",
+    position: "relative",
+    backgroundColor: "rgba(74, 44, 82, 0.58)",
+    borderColor: "rgba(255,255,255,0.18)",
     borderWidth: 1,
     borderRadius: 24,
     padding: 18,
     marginBottom: 18,
+    overflow: "hidden",
     boxShadow: "0px 6px 18px rgba(18, 7, 18, 0.2)",
     elevation: 3,
   },
+  anniversaryGlow: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.9,
+  },
+  anniversaryPattern: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.7,
+  },
+  patternOrbOne: {
+    position: "absolute",
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "rgba(255, 168, 214, 0.12)",
+    top: -30,
+    left: -8,
+  },
+  patternOrbTwo: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(160, 120, 255, 0.08)",
+    bottom: -42,
+    right: -22,
+  },
+  patternOrbThree: {
+    position: "absolute",
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(255, 214, 144, 0.08)",
+    top: 10,
+    right: 48,
+  },
   anniversaryLabel: {
+    position: "relative",
     color: "#f7d8ea",
     fontSize: 12,
     fontWeight: "800",
@@ -613,6 +942,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   anniversaryRow: {
+    position: "relative",
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
@@ -642,32 +972,55 @@ const styles = StyleSheet.create({
   },
   featureWidgetRow: { paddingRight: 12, paddingBottom: 8 },
   featureWidgetCard: {
-    width: 166,
-    minHeight: 140,
-    backgroundColor: "#431d43",
-    borderColor: "#6d315f",
+    width: 176,
+    minHeight: 150,
+    backgroundColor: "rgba(71, 42, 79, 0.6)",
+    borderColor: "rgba(255,255,255,0.14)",
     borderWidth: 1,
     borderRadius: 22,
     padding: 14,
     marginRight: 12,
     boxShadow: "0px 5px 12px rgba(18, 7, 18, 0.18)",
     elevation: 2,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+  },
+  featureWidgetCardPreview: {
+    paddingTop: 12,
+  },
+  featureWidgetPreviewImage: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.85,
+  },
+  featureWidgetPreviewOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(29, 12, 33, 0.42)",
   },
   featureWidgetIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    position: "relative",
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
+    zIndex: 1,
   },
   featureWidgetTitle: {
+    position: "relative",
     color: "#fff4fb",
     fontSize: 17,
     fontWeight: "800",
     marginBottom: 4,
+    zIndex: 1,
   },
-  featureWidgetDetail: { color: "#d8aeca", fontSize: 12, lineHeight: 18 },
+  featureWidgetDetail: {
+    position: "relative",
+    color: "#f8dfe9",
+    fontSize: 12,
+    lineHeight: 18,
+    zIndex: 1,
+  },
   notesSection: { flex: 1 },
   header: {
     flexDirection: "row",

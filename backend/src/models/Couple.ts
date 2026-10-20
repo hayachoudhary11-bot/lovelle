@@ -37,7 +37,7 @@ const coupleSchema = new mongoose.Schema(
       type: Date,
       default: null, // Set later during onboarding or settings
     },
-    // Daily Streak feature (planned)
+    // Daily Streak feature
     currentStreak: {
       type: Number,
       default: 0,
@@ -45,6 +45,10 @@ const coupleSchema = new mongoose.Schema(
     longestStreak: {
       type: Number,
       default: 0,
+    },
+    lastActivityAt: {
+      type: Date,
+      default: null,
     },
     lastNoteDate: {
       type: Date,

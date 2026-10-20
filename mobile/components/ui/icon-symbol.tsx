@@ -24,6 +24,10 @@ type IconSymbolName =
   | "flag"
   | "gamepad"
   | "gearshape"
+  | "flame"
+  | "list.bullet"
+  | "location"
+  | "battery.full"
   | "chevron.left.forwardslash.chevron.right"
   | "chevron.right";
 
@@ -53,6 +57,10 @@ const MAPPING: IconMapping = {
   flag: "sports-score",
   gamepad: "sports-esports",
   gearshape: "settings",
+  flame: "local-fire-department",
+  "list.bullet": "format-list-bulleted",
+  location: "location-on",
+  "battery.full": "battery-full",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",
 };
@@ -76,6 +84,10 @@ const OUTLINE_MAPPING: IconMapping = {
   flag: "sports-score",
   gamepad: "sports-esports",
   gearshape: "settings",
+  flame: "local-fire-department",
+  "list.bullet": "format-list-bulleted",
+  location: "location-on",
+  "battery.full": "battery-full",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",
 };

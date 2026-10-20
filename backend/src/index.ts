@@ -11,6 +11,7 @@ import messagesRoutes from "./routes/messages";
 import photosRoutes from "./routes/photos";
 import eventsRoutes from "./routes/events";
 import tasksRoutes from "./routes/tasks";
+import bucketListRoutes from "./routes/bucket-list";
 import promptsRoutes from "./routes/prompts";
 import challengesRoutes from "./routes/challenges";
 import couplesRoutes from "./routes/couples";
@@ -53,10 +54,14 @@ app.use(cors());
 // Request logger
 app.use((req, res, next) => {
   const start = Date.now();
-  console.log(`📡 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
+  console.log(
+    `📡 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`,
+  );
   res.on("finish", () => {
     const duration = Date.now() - start;
-    console.log(`📤 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+    console.log(
+      `📤 [${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`,
+    );
   });
   next();
 });
@@ -81,6 +86,7 @@ app.use("/messages", messagesRoutes);
 app.use("/photos", photosRoutes);
 app.use("/events", eventsRoutes);
 app.use("/tasks", tasksRoutes);
+app.use("/bucket-list", bucketListRoutes);
 app.use("/prompts", promptsRoutes);
 app.use("/challenges", challengesRoutes);
 app.use("/couples", couplesRoutes);
@@ -96,7 +102,9 @@ app.get("/notes-test", (req, res) => {
 // 404 handler for undefined routes
 app.use((req, res) => {
   console.log(`⚠️ 404 NOT FOUND: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
+  res
+    .status(404)
+    .json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
 // ============ START SERVER ============
@@ -107,7 +115,7 @@ const startServer = async () => {
     await connectDB();
 
     // Start Express server
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       logRegisteredRoutes();
       console.log(`\n🚀 Server running on http://localhost:${PORT}`);
       console.log(`📝 Try: curl http://localhost:${PORT}/health\n`);

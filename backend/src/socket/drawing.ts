@@ -17,6 +17,20 @@ type MessagePayload = {
   text: string;
 };
 
+type TouchPayload = {
+  source?: string;
+};
+
+type AffectionPayload = {
+  type?:
+    | "kiss"
+    | "hug"
+    | "miss-you"
+    | "thinking-of-you"
+    | "good-morning"
+    | "good-night";
+};
+
 function isStrokePayload(payload: unknown): payload is StrokePayload {
   if (!payload || typeof payload !== "object") return false;
   const stroke = payload as Partial<StrokePayload>;
@@ -40,7 +54,32 @@ function isStrokePayload(payload: unknown): payload is StrokePayload {
 }
 
 function isMessagePayload(payload: unknown): payload is MessagePayload {
-  return !!payload && typeof payload === "object" && typeof (payload as { text?: unknown }).text === "string";
+  return (
+    !!payload &&
+    typeof payload === "object" &&
+    typeof (payload as { text?: unknown }).text === "string"
+  );
+}
+
+function isTouchPayload(payload: unknown): payload is TouchPayload {
+  return (
+    !!payload &&
+    typeof payload === "object" &&
+    typeof (payload as { source?: unknown }).source === "string"
+  );
+}
+
+function isAffectionPayload(payload: unknown): payload is AffectionPayload {
+  if (!payload || typeof payload !== "object") return false;
+  const type = (payload as { type?: unknown }).type;
+  return (
+    type === "kiss" ||
+    type === "hug" ||
+    type === "miss-you" ||
+    type === "thinking-of-you" ||
+    type === "good-morning" ||
+    type === "good-night"
+  );
 }
 
 function serializeMessage(message: any) {
@@ -59,7 +98,10 @@ function getToken(socket: Socket): string | null {
   const authToken = socket.handshake.auth?.token;
   if (typeof authToken === "string") return authToken;
   const authorization = socket.handshake.headers.authorization;
-  if (typeof authorization === "string" && authorization.startsWith("Bearer ")) {
+  if (
+    typeof authorization === "string" &&
+    authorization.startsWith("Bearer ")
+  ) {
     return authorization.substring(7);
   }
   return null;
@@ -71,7 +113,8 @@ export function registerDrawingSocket(io: Server) {
       const token = getToken(socket);
       if (!token) return next(new Error("Missing authentication token"));
       const decoded = verifyToken(token);
-      if (!decoded.userId || !decoded.coupleId) return next(new Error("User is not in a couple"));
+      if (!decoded.userId || !decoded.coupleId)
+        return next(new Error("User is not in a couple"));
       (socket as AuthenticatedSocket).user = {
         userId: decoded.userId,
         coupleId: decoded.coupleId,
@@ -92,65 +135,118 @@ export function registerDrawingSocket(io: Server) {
       socket.emit("board-joined", { room });
     });
 
-    socket.on("stroke", async (payload: unknown, callback?: (response: { error?: string; stroke?: unknown }) => void) => {
-      if (!isStrokePayload(payload)) {
-        callback?.({ error: "Invalid stroke payload" });
-        return;
-      }
-      try {
-        const savedStroke = await DrawingStroke.create({
-          coupleId: socket.user.coupleId,
-          points: payload.points,
-          color: payload.color.trim(),
-          strokeWidth: payload.strokeWidth,
-          createdBy: socket.user.userId,
-        });
-        socket.to(room).emit("stroke", savedStroke);
-        callback?.({ stroke: savedStroke });
-      } catch (error) {
-        console.error("Save drawing stroke error:", error);
-        callback?.({ error: "Could not save stroke" });
-      }
-    });
+    socket.on(
+      "stroke",
+      async (
+        payload: unknown,
+        callback?: (response: { error?: string; stroke?: unknown }) => void,
+      ) => {
+        if (!isStrokePayload(payload)) {
+          callback?.({ error: "Invalid stroke payload" });
+          return;
+        }
+        try {
+          const savedStroke = await DrawingStroke.create({
+            coupleId: socket.user.coupleId,
+            points: payload.points,
+            color: payload.color.trim(),
+            strokeWidth: payload.strokeWidth,
+            createdBy: socket.user.userId,
+          });
+          socket.to(room).emit("stroke", savedStroke);
+          callback?.({ stroke: savedStroke });
+        } catch (error) {
+          console.error("Save drawing stroke error:", error);
+          callback?.({ error: "Could not save stroke" });
+        }
+      },
+    );
 
-    socket.on("clear-board", async (callback?: (response: { error?: string }) => void) => {
-      try {
-        await DrawingStroke.deleteMany({ coupleId: socket.user.coupleId });
-        io.to(room).emit("board-cleared");
+    socket.on(
+      "clear-board",
+      async (callback?: (response: { error?: string }) => void) => {
+        try {
+          await DrawingStroke.deleteMany({ coupleId: socket.user.coupleId });
+          io.to(room).emit("board-cleared");
+          callback?.({});
+        } catch (error) {
+          console.error("Clear drawing board error:", error);
+          callback?.({ error: "Could not clear board" });
+        }
+      },
+    );
+
+    socket.on(
+      "touch",
+      (payload: unknown, callback?: (response: { error?: string }) => void) => {
+        if (!isTouchPayload(payload)) {
+          callback?.({ error: "Invalid touch payload" });
+          return;
+        }
+
+        const touchEvent = {
+          fromUserId: socket.user.userId,
+          source: payload.source,
+          timestamp: new Date().toISOString(),
+        };
+
+        socket.to(room).emit("partner-touch", touchEvent);
         callback?.({});
-      } catch (error) {
-        console.error("Clear drawing board error:", error);
-        callback?.({ error: "Could not clear board" });
-      }
-    });
+      },
+    );
 
-    socket.on("send-message", async (payload: unknown, callback?: (response: { error?: string; message?: unknown }) => void) => {
-      if (!isMessagePayload(payload)) {
-        callback?.({ error: "Invalid message payload" });
-        return;
-      }
+    socket.on(
+      "affection",
+      (payload: unknown, callback?: (response: { error?: string }) => void) => {
+        if (!isAffectionPayload(payload)) {
+          callback?.({ error: "Invalid affection payload" });
+          return;
+        }
 
-      const text = payload.text.trim();
-      if (!text) {
-        callback?.({ error: "Message text is required" });
-        return;
-      }
+        const affectionEvent = {
+          fromUserId: socket.user.userId,
+          type: payload.type,
+          timestamp: new Date().toISOString(),
+        };
 
-      try {
-        const savedMessage = await Message.create({
-          coupleId: socket.user.coupleId,
-          senderId: socket.user.userId,
-          text,
-        });
+        socket.to(room).emit("partner-affection", affectionEvent);
+        callback?.({});
+      },
+    );
 
-        const serializedMessage = serializeMessage(savedMessage.toObject());
-        socket.to(room).emit("new-message", serializedMessage);
-        socket.emit("new-message", serializedMessage);
-        callback?.({ message: serializedMessage });
-      } catch (error) {
-        console.error("Save message error:", error);
-        callback?.({ error: "Could not save message" });
-      }
-    });
+    socket.on(
+      "send-message",
+      async (
+        payload: unknown,
+        callback?: (response: { error?: string; message?: unknown }) => void,
+      ) => {
+        if (!isMessagePayload(payload)) {
+          callback?.({ error: "Invalid message payload" });
+          return;
+        }
+
+        const text = payload.text.trim();
+        if (!text) {
+          callback?.({ error: "Message text is required" });
+          return;
+        }
+
+        try {
+          const savedMessage = await Message.create({
+            coupleId: socket.user.coupleId,
+            senderId: socket.user.userId,
+            text,
+          });
+
+          const serializedMessage = serializeMessage(savedMessage.toObject());
+          socket.to(room).emit("new-message", serializedMessage);
+          socket.emit("new-message", serializedMessage);
+          callback?.({ message: serializedMessage });
+        } catch (error) {
+          console.error("Save message error:", error);
+          callback?.({ error: "Could not save message" });
+        }
+      },
+    );
   });
 }

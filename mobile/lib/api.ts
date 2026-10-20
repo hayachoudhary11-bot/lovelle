@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 
 const DEFAULT_LOCAL_HOST = "http://10.0.2.2:4000";
 const FALLBACK_LOCAL_HOST = "http://localhost:4000";
-const PRODUCTION_API_URL = "http://192.168.1.25:4000";
+const PRODUCTION_API_URL = "http://192.168.1.5:4000";
 
 function getDevApiBaseUrl(): string {
   if (Platform.OS === "web") {
@@ -29,7 +29,6 @@ function getDevApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = __DEV__ ? getDevApiBaseUrl() : PRODUCTION_API_URL;
-console.log("[API] resolved API_BASE_URL:", API_BASE_URL);
 
 export async function getErrorMessage(response: Response): Promise<string> {
   try {
