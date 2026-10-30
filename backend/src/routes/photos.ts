@@ -1,3 +1,5 @@
+import { Couple } from "../models/Couple";
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Photo } from "../models/Photo";
 import { authMiddleware } from "../middleware/auth";
@@ -16,8 +18,7 @@ router.get("/", async (req: Request, res: Response) => {
     const photos = await Photo.find({ coupleId }).sort({ createdAt: -1 });
     return res.json(photos);
   } catch (error: any) {
-    console.error("Get photos error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -66,8 +67,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     return res.status(201).json(photo);
   } catch (error: any) {
-    console.error("Save photo error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -83,10 +83,10 @@ router.delete("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Photo not found" });
     }
 
+    await Couple.updateOne({ _id: coupleId, featuredPhotoId: photo._id }, { $set: { featuredPhotoId: null } });
     return res.json({ message: "Photo deleted successfully" });
   } catch (error: any) {
-    console.error("Delete photo error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

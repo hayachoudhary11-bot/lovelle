@@ -1,3 +1,5 @@
+import { isStrokePayload } from "../validation";
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { DrawingStroke } from "../models/DrawingStroke";
 import { authMiddleware } from "../middleware/auth";
@@ -13,8 +15,7 @@ router.get("/strokes", async (req: Request, res: Response) => {
     const strokes = await DrawingStroke.find({ coupleId }).sort({ createdAt: 1 });
     return res.json(strokes);
   } catch (error: any) {
-    console.error("Get drawing strokes error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -25,8 +26,8 @@ router.post("/strokes", async (req: Request, res: Response) => {
     if (!coupleId || !userId) return res.status(400).json({ error: "User is not in a couple" });
 
     const { points, color, strokeWidth } = req.body;
-    if (!Array.isArray(points) || points.length === 0) {
-      return res.status(400).json({ error: "Points array is required" });
+    if (!isStrokePayload({ points, color: color ?? "#333", strokeWidth: strokeWidth ?? 3 })) {
+      return res.status(400).json({ error: "Invalid drawing stroke" });
     }
 
     const stroke = await DrawingStroke.create({
@@ -37,10 +38,10 @@ router.post("/strokes", async (req: Request, res: Response) => {
       createdBy: userId,
     });
 
+    req.app.get("io")?.to(`couple:${coupleId}`).emit("stroke", stroke);
     return res.status(201).json(stroke);
   } catch (error: any) {
-    console.error("Create stroke error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -54,8 +55,7 @@ router.delete("/strokes", async (req: Request, res: Response) => {
     io?.to(`couple:${coupleId}`).emit("board-cleared");
     return res.json({ message: "Drawing board cleared", deletedCount: result.deletedCount });
   } catch (error: any) {
-    console.error("Clear drawing board error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

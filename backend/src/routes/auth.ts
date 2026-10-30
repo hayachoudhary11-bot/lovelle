@@ -1,4 +1,7 @@
+import { sendError } from "../middleware/errors";
 import mongoose from "mongoose";
+import { randomInt } from "crypto";
+import { HttpError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -26,8 +29,7 @@ router.get("/me", authMiddleware, async (req: Request, res: Response) => {
       couple,
     });
   } catch (error: any) {
-    console.error("Get current user error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -39,7 +41,7 @@ function generateInviteCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
   for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(randomInt(chars.length));
   }
   return code;
 }
@@ -71,14 +73,14 @@ router.post("/signup", async (req: Request, res: Response) => {
     const { email, password, name } = req.body;
 
     // Validate input
-    if (!email || !password || !name) {
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.length > 254 || typeof password !== "string" || password.length < 8 || Buffer.byteLength(password) > 72 || typeof name !== "string" || !name.trim() || name.length > 100) {
       return res
         .status(400)
-        .json({ error: "Email, password, and name are required" });
+        .json({ error: "Valid email, name (1-100 characters), and password (8-72 bytes) are required" });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
     }
@@ -89,8 +91,8 @@ router.post("/signup", async (req: Request, res: Response) => {
 
     // Create the new user
     const user = await User.create({
-      email: email.toLowerCase(),
-      name,
+      email: email.trim().toLowerCase(),
+      name: name.trim(),
       passwordHash,
       coupleId: null, // User hasn't joined/created a couple yet
     });
@@ -109,8 +111,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error("Signup error:", error.message);
-    res.status(500).json({ error: error.message || "Server error" });
+    sendError(res, error);
   }
 });
 
@@ -129,12 +130,12 @@ router.post("/login", async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     // Validate input
-    if (!email || !password) {
+    if (typeof email !== "string" || !email.trim() || email.length > 254 || typeof password !== "string" || !password || Buffer.byteLength(password) > 72) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
     // Find the user
-    const user = await User.findOne({ email: email.toLowerCase() }).select(
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select(
       "+passwordHash",
     );
     if (!user) {
@@ -165,8 +166,7 @@ router.post("/login", async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error("Login error:", error.message);
-    res.status(500).json({ error: error.message || "Server error" });
+    sendError(res, error);
   }
 });
 
@@ -189,15 +189,19 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
-    // Create a new couple with the logged-in user as the first member
-    const couple = await Couple.create({
-      name: coupleName || null,
-      members: [userId],
-      inviteCode: generateInviteCode(),
+    if (coupleName !== undefined && (typeof coupleName !== "string" || coupleName.length > 100)) {
+      return res.status(400).json({ error: "Couple name must be at most 100 characters" });
+    }
+    const couple = await mongoose.connection.transaction(async (session) => {
+      const user = await User.findById(userId).session(session);
+      if (!user || user.coupleId) throw new HttpError(409, "You are already in a couple");
+      const [created] = await Couple.create([{
+        name: coupleName?.trim() || null, members: [userId], inviteCode: generateInviteCode(),
+      }], { session });
+      user.coupleId = created._id;
+      await user.save({ session });
+      return created;
     });
-
-    // Update the user's coupleId
-    await User.findByIdAndUpdate(userId, { coupleId: couple._id });
 
     const token = generateToken(userId, couple._id.toString());
 
@@ -211,8 +215,7 @@ router.post("/create", authMiddleware, async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error("Create couple error:", error.message);
-    res.status(500).json({ error: error.message || "Server error" });
+    sendError(res, error);
   }
 });
 
@@ -235,36 +238,22 @@ router.post("/join", authMiddleware, async (req: Request, res: Response) => {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
-    // Validate input
-    if (!inviteCode) {
-      return res.status(400).json({ error: "Invite code is required" });
+    if (typeof inviteCode !== "string" || !/^[A-Z0-9]{6}$/.test(inviteCode.trim().toUpperCase())) {
+      return res.status(400).json({ error: "A valid six-character invite code is required" });
     }
-
-    // Find the couple by invite code
-    const couple = await Couple.findOne({ inviteCode });
-    if (!couple) {
-      return res.status(404).json({ error: "Invalid invite code" });
-    }
-
-    // Check if couple already has 2 members
-    if (couple.members.length >= 2) {
-      return res
-        .status(400)
-        .json({ error: "This couple already has 2 members" });
-    }
-
-    // Check if user already in a couple
-    const user = await User.findById(userId);
-    if (user?.coupleId) {
-      return res.status(400).json({ error: "You are already in a couple" });
-    }
-
-    // Add the user to the couple
-    couple.members.push(new mongoose.Types.ObjectId(userId));
-    await couple.save();
-
-    // Update the user's coupleId
-    await User.findByIdAndUpdate(userId, { coupleId: couple._id });
+    const couple = await mongoose.connection.transaction(async (session) => {
+      const user = await User.findById(userId).session(session);
+      if (!user || user.coupleId) throw new HttpError(409, "You are already in a couple");
+      const joined = await Couple.findOneAndUpdate(
+        { inviteCode: inviteCode.trim().toUpperCase(), "members.1": { $exists: false }, members: { $ne: userId } },
+        { $addToSet: { members: userId } },
+        { returnDocument: "after", session },
+      );
+      if (!joined) throw new HttpError(409, "Invalid invite code or couple is full");
+      user.coupleId = joined._id;
+      await user.save({ session });
+      return joined;
+    });
 
     const token = generateToken(userId, couple._id.toString());
 
@@ -278,8 +267,7 @@ router.post("/join", authMiddleware, async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error("Join couple error:", error.message);
-    res.status(500).json({ error: error.message || "Server error" });
+    sendError(res, error);
   }
 });
 

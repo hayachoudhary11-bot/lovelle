@@ -1,3 +1,4 @@
+import { sendError } from "../middleware/errors";
 import mongoose from "mongoose";
 import { Router, Request, Response } from "express";
 import { Task } from "../models/Task";
@@ -20,8 +21,7 @@ router.get("/", async (req: Request, res: Response) => {
     });
     return res.json(tasks);
   } catch (error: any) {
-    console.error("Get tasks error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -48,8 +48,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     return res.status(201).json(task);
   } catch (error: any) {
-    console.error("Create task error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -72,8 +71,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
 
     return res.json(task);
   } catch (error: any) {
-    console.error("Toggle task error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -91,8 +89,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
 
     return res.json({ message: "Task deleted successfully" });
   } catch (error: any) {
-    console.error("Delete task error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

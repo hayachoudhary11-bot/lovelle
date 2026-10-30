@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/context/auth";
 import { GradientButton } from "@/components/gradient-button";
@@ -19,7 +19,7 @@ export default function SettingsScreen() {
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
 
-  const loadCouple = async () => {
+  const loadCouple = useCallback(async () => {
     if (!session?.token) return;
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -35,12 +35,12 @@ export default function SettingsScreen() {
           : "Could not load couple details",
       );
     }
-  };
+  }, [session]);
 
   useFocusEffect(
     useCallback(() => {
       loadCouple();
-    }, [session?.token]),
+    }, [loadCouple]),
   );
 
   const copyInviteCode = async () => {

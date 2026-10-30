@@ -1,11 +1,12 @@
+import { confirmDelete } from '@/lib/confirm-delete';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -17,9 +18,9 @@ import { GradientButton } from '@/components/gradient-button';
 import { EmptyState } from '@/components/empty-state';
 import { API_BASE_URL, authHeaders, getErrorMessage } from '@/lib/api';
 
-const CLOUDINARY_CLOUD_NAME = 'tmtzqmmh';
+const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
-const CLOUDINARY_UPLOAD_PRESET = 'lovelle_uploads';
+const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '';
 
 type Photo = {
   _id: string;
@@ -37,6 +38,15 @@ type CloudinaryUploadResult = {
   height: number;
 };
 
+async function loadPhotos(token: string) {
+    const response = await fetch(`${API_BASE_URL}/photos`, {
+      headers: authHeaders(token),
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    const items = await response.json();
+    return items;
+  }
+
 export default function GalleryScreen() {
   const { session } = useAuth();
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -45,17 +55,11 @@ export default function GalleryScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const loadPhotos = async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/photos`, {
-      headers: authHeaders(token),
-    });
-    if (!response.ok) throw new Error(await getErrorMessage(response));
-    setPhotos(await response.json());
-  };
+
 
   useEffect(() => {
     if (!session?.token) return;
-    loadPhotos(session.token).catch((error: Error) => {
+    loadPhotos(session.token).then(setPhotos).catch((error: Error) => {
       console.log('[Gallery] load photos error:', error);
       setMessage(error.message);
     });
@@ -64,6 +68,7 @@ export default function GalleryScreen() {
   const pickAndUploadPhoto = async () => {
     if (!session?.token) return;
 
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) { setMessage('Photo uploads are not configured yet.'); return; }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       setMessage('Photo library permission is required to choose an image.');
@@ -82,30 +87,20 @@ export default function GalleryScreen() {
     setMessage('');
     try {
       const formData = new FormData();
-      const imageResponse = await fetch(asset.uri);
-      const imageBlob = await imageResponse.blob();
-      formData.append(
-        'file',
-        imageBlob,
-        asset.fileName || `lovelle-${Date.now()}.jpg`,
-      );
+      if (Platform.OS === 'web') {
+        const imageResponse = await fetch(asset.uri);
+        formData.append('file', await imageResponse.blob(), asset.fileName || 'photo.jpg');
+      } else {
+        formData.append('file', { uri: asset.uri, name: asset.fileName || 'photo.jpg', type: asset.mimeType || 'image/jpeg' } as unknown as Blob);
+      }
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      console.log('[Cloudinary] upload request:', JSON.stringify({
-        url: CLOUDINARY_UPLOAD_URL,
-        upload_preset: CLOUDINARY_UPLOAD_PRESET,
-        upload_preset_length: CLOUDINARY_UPLOAD_PRESET.length,
-        upload_preset_char_codes: Array.from(CLOUDINARY_UPLOAD_PRESET).map((character) => character.charCodeAt(0)),
-      }));
-
       const cloudinaryResponse = await fetch(CLOUDINARY_UPLOAD_URL, {
         method: 'POST',
         body: formData,
       });
       const cloudinaryBody = await cloudinaryResponse.text();
-      console.log('[Cloudinary] upload response status:', cloudinaryResponse.status);
-      console.log('[Cloudinary] upload response body:', cloudinaryBody);
       if (!cloudinaryResponse.ok) {
-        throw new Error(`Cloudinary upload failed (${cloudinaryResponse.status}): ${cloudinaryBody}`);
+        throw new Error(`Photo upload failed (${cloudinaryResponse.status}). Please try again.`);
       }
 
       const cloudinaryPhoto = JSON.parse(cloudinaryBody) as CloudinaryUploadResult;
@@ -139,26 +134,18 @@ export default function GalleryScreen() {
 
   const deletePhoto = (photoId: string) => {
     if (!session?.token) return;
-    Alert.alert('Delete photo?', 'This removes the photo record from Lovelle.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const response = await fetch(`${API_BASE_URL}/photos/${photoId}`, {
-              method: 'DELETE',
-              headers: authHeaders(session.token),
-            });
-            if (!response.ok) throw new Error(await getErrorMessage(response));
-            setPhotos((currentPhotos) => currentPhotos.filter((photo) => photo._id !== photoId));
-          } catch (error) {
-            console.log('[Gallery] full delete error:', error);
-            setMessage(error instanceof Error ? error.message : 'Could not delete photo');
-          }
-        },
-      },
-    ]);
+    confirmDelete('Delete photo?', 'This removes the photo record from Lovelle.', async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/photos/${photoId}`, {
+          method: 'DELETE',
+          headers: authHeaders(session.token),
+        });
+        if (!response.ok) throw new Error(await getErrorMessage(response));
+        setPhotos((currentPhotos) => currentPhotos.filter((photo) => photo._id !== photoId));
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : 'Could not delete photo');
+      }
+    });
   };
 
   const setAsPhotoFrame = async (photoId: string) => {

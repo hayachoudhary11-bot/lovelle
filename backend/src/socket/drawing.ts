@@ -1,43 +1,14 @@
 import { Server, Socket } from "socket.io";
 import { DrawingStroke } from "../models/DrawingStroke";
 import { Message } from "../models/Message";
-import { verifyToken } from "../middleware/auth";
+import { authenticateToken } from "../middleware/auth";
 
 type AuthenticatedSocket = Socket & {
   user: { userId: string; coupleId: string };
 };
 
-type Point = { x: number; y: number };
-type StrokePayload = {
-  points: Point[];
-  color: string;
-  strokeWidth: number;
-};
-type MessagePayload = {
-  text: string;
-};
-
-function isStrokePayload(payload: unknown): payload is StrokePayload {
-  if (!payload || typeof payload !== "object") return false;
-  const stroke = payload as Partial<StrokePayload>;
-  return (
-    Array.isArray(stroke.points) &&
-    stroke.points.length > 0 &&
-    stroke.points.every(
-      (point) =>
-        point &&
-        typeof point.x === "number" &&
-        Number.isFinite(point.x) &&
-        typeof point.y === "number" &&
-        Number.isFinite(point.y),
-    ) &&
-    typeof stroke.color === "string" &&
-    stroke.color.trim().length > 0 &&
-    typeof stroke.strokeWidth === "number" &&
-    Number.isFinite(stroke.strokeWidth) &&
-    stroke.strokeWidth > 0
-  );
-}
+import { isStrokePayload } from "../validation";
+type MessagePayload = { text: string };
 
 function isMessagePayload(payload: unknown): payload is MessagePayload {
   return !!payload && typeof payload === "object" && typeof (payload as { text?: unknown }).text === "string";
@@ -66,16 +37,21 @@ function getToken(socket: Socket): string | null {
 }
 
 export function registerDrawingSocket(io: Server) {
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const token = getToken(socket);
       if (!token) return next(new Error("Missing authentication token"));
-      const decoded = verifyToken(token);
+      const decoded = await authenticateToken(token);
       if (!decoded.userId || !decoded.coupleId) return next(new Error("User is not in a couple"));
       (socket as AuthenticatedSocket).user = {
         userId: decoded.userId,
         coupleId: decoded.coupleId,
       };
+      if (decoded.exp) {
+        const expires = setTimeout(() => socket.disconnect(true), Math.min(decoded.exp * 1000 - Date.now(), 2147483647));
+        expires.unref();
+        socket.once("disconnect", () => clearTimeout(expires));
+      }
       return next();
     } catch {
       return next(new Error("Invalid or expired token"));
@@ -93,8 +69,9 @@ export function registerDrawingSocket(io: Server) {
     });
 
     socket.on("stroke", async (payload: unknown, callback?: (response: { error?: string; stroke?: unknown }) => void) => {
+      const ack = typeof callback === "function" ? callback : () => {};
       if (!isStrokePayload(payload)) {
-        callback?.({ error: "Invalid stroke payload" });
+        ack({ error: "Invalid stroke payload" });
         return;
       }
       try {
@@ -106,33 +83,35 @@ export function registerDrawingSocket(io: Server) {
           createdBy: socket.user.userId,
         });
         socket.to(room).emit("stroke", savedStroke);
-        callback?.({ stroke: savedStroke });
+        ack({ stroke: savedStroke });
       } catch (error) {
-        console.error("Save drawing stroke error:", error);
-        callback?.({ error: "Could not save stroke" });
+        console.error("Save drawing stroke error:");
+        ack({ error: "Could not save stroke" });
       }
     });
 
     socket.on("clear-board", async (callback?: (response: { error?: string }) => void) => {
+      const ack = typeof callback === "function" ? callback : () => {};
       try {
         await DrawingStroke.deleteMany({ coupleId: socket.user.coupleId });
         io.to(room).emit("board-cleared");
-        callback?.({});
+        ack({});
       } catch (error) {
-        console.error("Clear drawing board error:", error);
-        callback?.({ error: "Could not clear board" });
+        console.error("Clear drawing board error:");
+        ack({ error: "Could not clear board" });
       }
     });
 
     socket.on("send-message", async (payload: unknown, callback?: (response: { error?: string; message?: unknown }) => void) => {
+      const ack = typeof callback === "function" ? callback : () => {};
       if (!isMessagePayload(payload)) {
-        callback?.({ error: "Invalid message payload" });
+        ack({ error: "Invalid message payload" });
         return;
       }
 
       const text = payload.text.trim();
-      if (!text) {
-        callback?.({ error: "Message text is required" });
+      if (!text || text.length > 5000) {
+        ack({ error: "Message must contain 1-5000 characters" });
         return;
       }
 
@@ -146,10 +125,10 @@ export function registerDrawingSocket(io: Server) {
         const serializedMessage = serializeMessage(savedMessage.toObject());
         socket.to(room).emit("new-message", serializedMessage);
         socket.emit("new-message", serializedMessage);
-        callback?.({ message: serializedMessage });
+        ack({ message: serializedMessage });
       } catch (error) {
-        console.error("Save message error:", error);
-        callback?.({ error: "Could not save message" });
+        console.error("Save message error:");
+        ack({ error: "Could not save message" });
       }
     });
   });

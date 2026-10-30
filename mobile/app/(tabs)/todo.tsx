@@ -13,6 +13,15 @@ type Task = {
   createdAt?: string;
 };
 
+async function loadTasks(token: string) {
+    const response = await fetch(`${API_BASE_URL}/tasks`, {
+      headers: authHeaders(token),
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    const items = await response.json();
+    return items;
+  }
+
 export default function TodoScreen() {
   const { session } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -20,17 +29,11 @@ export default function TodoScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const loadTasks = async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/tasks`, {
-      headers: authHeaders(token),
-    });
-    if (!response.ok) throw new Error(await getErrorMessage(response));
-    setTasks(await response.json());
-  };
+
 
   useEffect(() => {
     if (!session?.token) return;
-    loadTasks(session.token).catch((error: Error) => setMessage(error.message));
+    loadTasks(session.token).then(setTasks).catch((error: Error) => setMessage(error.message));
   }, [session?.token]);
 
   const addTask = async () => {

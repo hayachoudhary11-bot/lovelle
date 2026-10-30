@@ -5,7 +5,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+
   StyleSheet,
   Text,
   TextInput,
@@ -81,12 +81,12 @@ export default function MessagesScreen() {
           headers: authHeaders(session.token),
         });
         if (!response.ok) throw new Error(await getErrorMessage(response));
-        const history = (await response.json()) as Array<Partial<Message>>;
+        const history = (await response.json()) as Partial<Message>[];
         if (!mounted) return;
         const parsedMessages = history
           .map(normalizeMessage)
           .filter((message): message is Message => Boolean(message));
-        setMessages(parsedMessages);
+        setMessages((current) => [...new Map([...parsedMessages, ...current].map((item) => [item._id, item])).values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
       } catch (loadError) {
         if (mounted) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load messages');
@@ -98,12 +98,14 @@ export default function MessagesScreen() {
 
     const socket = io(API_BASE_URL, {
       auth: { token: session.token },
+      transports: ['websocket'],
     });
     socketRef.current = socket;
 
     const handleConnect = () => {
       setConnected(true);
-      socket.emit('join-board');
+      setError('');
+      void loadHistory();
     };
     const handleIncomingMessage = (message: Partial<Message>) => {
       const normalized = normalizeMessage(message);

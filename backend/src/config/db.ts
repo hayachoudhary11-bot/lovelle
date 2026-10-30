@@ -1,29 +1,10 @@
 import mongoose from "mongoose";
-
-/**
- * Connect to MongoDB Atlas
- *
- * This function is called when the server starts (in index.ts)
- * It reads MONGO_URI from the .env file
- */
-export const connectDB = async () => {
-  try {
-    console.log("🔄 Connecting to MongoDB...");
-    console.log(
-      "Connection string:",
-      process.env.MONGO_URI?.substring(0, 50) + "...",
-    );
-
-    const conn = await mongoose.connect(process.env.MONGO_URI!, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
-    return conn;
-  } catch (error: any) {
-    console.error(`❌ MongoDB connection failed: ${error.message}`);
-    console.error("Stack:", error.stack);
-    process.exit(1); // Stop the server if connection fails
-  }
-};
+let connecting: Promise<typeof mongoose> | undefined;
+export async function connectDB(uri = process.env.MONGO_URI || process.env.MONGODB_URI) {
+  if (mongoose.connection.readyState === 1) return mongoose;
+  if (!uri) throw new Error("MONGO_URI is required");
+  if (!connecting) connecting = mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10000, socketTimeoutMS: 45000, maxPoolSize: 10,
+  }).finally(() => { connecting = undefined; });
+  return connecting;
+}

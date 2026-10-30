@@ -1,3 +1,4 @@
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Couple } from "../models/Couple";
 import { Prompt } from "../models/Prompt";
@@ -62,8 +63,7 @@ router.get("/today", async (req: Request, res: Response) => {
         : undefined,
     });
   } catch (error: any) {
-    console.error("Get today's prompt error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -83,12 +83,11 @@ router.post("/answer", async (req: Request, res: Response) => {
     const answer = await PromptAnswer.findOneAndUpdate(
       { coupleId, promptId: todaysPrompt.prompt._id, answeredBy: userId, date },
       { $set: { answerText: answerText.trim() } },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     );
     return res.status(201).json({ answer });
   } catch (error: any) {
-    console.error("Submit prompt answer error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -103,16 +102,18 @@ router.get("/history", async (req: Request, res: Response) => {
       .populate("answeredBy", "name email");
     const history = new Map<string, any>();
     for (const answer of answers) {
+      if (!answer.promptId || !answer.answeredBy) continue;
       const key = `${answer.promptId._id.toString()}:${answer.date.toISOString()}`;
       if (!history.has(key)) {
         history.set(key, { date: answer.date, prompt: answer.promptId, answers: [] });
       }
       history.get(key).answers.push({ answeredBy: answer.answeredBy, answerText: answer.answerText });
     }
-    return res.json(Array.from(history.values()));
+    const members = await Couple.findById(coupleId).select("members");
+    const memberIds = members?.members.map(String) || [];
+    return res.json(Array.from(history.values()).filter((entry) => memberIds.length === 2 && memberIds.every((id) => entry.answers.some((answer: any) => String(answer.answeredBy._id) === id))));
   } catch (error: any) {
-    console.error("Get prompt history error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

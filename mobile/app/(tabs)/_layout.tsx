@@ -1,4 +1,6 @@
-import { Tabs } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '@/context/auth';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -8,6 +10,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { session, restoring } = useAuth();
+  if (restoring) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  if (!session) return <Redirect href="/login" />;
+  if (!session.coupleId) return <Redirect href="/couple" />;
 
   return (
     <Tabs

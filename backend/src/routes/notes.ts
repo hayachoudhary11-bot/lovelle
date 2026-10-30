@@ -1,8 +1,8 @@
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Note } from "../models/Note";
 import { authMiddleware } from "../middleware/auth";
 
-console.log("[notes.ts] NOTE ROUTER FILE LOADED");
 
 const router = Router();
 
@@ -26,8 +26,7 @@ router.get("/", async (req: Request, res: Response) => {
 
     return res.json(notes);
   } catch (error: any) {
-    console.error("Get notes error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -59,8 +58,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     return res.status(201).json(note);
   } catch (error: any) {
-    console.error("Create note error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -77,22 +75,15 @@ router.delete("/:id", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "User is not in a couple" });
     }
 
-    const note = await Note.findById(noteId);
+    const note = await Note.findOneAndDelete({ _id: noteId, coupleId: userCoupleId });
 
     if (!note) {
       return res.status(404).json({ error: "Note not found" });
     }
 
-    if (note.coupleId.toString() !== userCoupleId.toString()) {
-      return res.status(403).json({ error: "You do not own this note" });
-    }
-
-    await Note.findByIdAndDelete(noteId);
-
     return res.json({ message: "Note deleted successfully" });
   } catch (error: any) {
-    console.error("Delete note error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

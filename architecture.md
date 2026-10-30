@@ -4,6 +4,28 @@ This is the source-of-truth document for the app. Any new feature or change shou
 be checked against this file, and this file should be updated whenever something
 here changes.
 
+## Deployment and implementation status (2026-10-30)
+
+The running implementation now includes auth/couple onboarding, notes, messages,
+gallery metadata, events/calendar, tasks, prompts/challenges, and shared drawing.
+The older planned-feature lists below are historical design notes; use the source
+and [README.md](README.md) for current setup and deployment details.
+
+- Deploy as two Vercel projects: `mobile` (static Expo web export) and `backend`
+  (HTTP server exported by `api/index.ts`). Node.js 22 is required.
+- Backend configuration uses `MONGO_URI` (`MONGODB_URI` is accepted as an alias),
+  `JWT_SECRET`, and explicit `CORS_ORIGINS`. Mobile build configuration uses
+  `EXPO_PUBLIC_API_URL` and the two public Cloudinary values documented in README.
+- Couple creation/join use MongoDB transactions, requiring a replica set/Atlas.
+  Authorization resolves current database membership rather than trusting stale
+  couple IDs embedded in tokens.
+- Socket.IO uses WebSockets and a MongoDB change-stream adapter on Vercel so
+  separate function instances can communicate. Clients reconnect and reload state.
+- Prompt/challenge history only reveals groups answered by both current members.
+- Health checks verify database connectivity. Tests use a disposable replica set.
+- Gallery delivery URLs remain public/unlisted; deleting metadata does not delete
+  Cloudinary assets. Authenticated media delivery is a separate future change.
+
 ## 1. Project Overview
 
 Lovelle is a couples app inspired by "Lovora." It gives each couple a shared,

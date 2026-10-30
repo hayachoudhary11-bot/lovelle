@@ -1,3 +1,4 @@
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Event } from "../models/Event";
 import { authMiddleware } from "../middleware/auth";
@@ -16,8 +17,7 @@ router.get("/", async (req: Request, res: Response) => {
     const events = await Event.find({ coupleId }).sort({ date: 1 });
     return res.json(events);
   } catch (error: any) {
-    console.error("Get events error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -54,8 +54,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     return res.status(201).json(event);
   } catch (error: any) {
-    console.error("Create event error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 
@@ -73,8 +72,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
 
     return res.json({ message: "Event deleted successfully" });
   } catch (error: any) {
-    console.error("Delete event error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

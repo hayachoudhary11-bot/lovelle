@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-const BASE_URL = "http://localhost:4000";
+if (!process.env.TEST_BASE_URL || process.env.ALLOW_TEST_WRITES !== 'true') throw new Error('Set TEST_BASE_URL and ALLOW_TEST_WRITES=true only for a disposable test database');
+const BASE_URL = process.env.TEST_BASE_URL;
 
 async function runTests() {
   console.log("🚀 Starting Full End-to-End API Test Suite...\n");

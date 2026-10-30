@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/context/auth';
 import { GradientButton } from '@/components/gradient-button';
@@ -36,6 +36,18 @@ function getAnswererName(answer: ChallengeAnswer) {
   return typeof answer.answeredBy === 'object' ? answer.answeredBy.name || 'Partner' : 'Answer';
 }
 
+async function loadChallenges(token: string) {
+    const [todayResponse, historyResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/challenges/today`, { headers: authHeaders(token) }),
+      fetch(`${API_BASE_URL}/challenges/history`, { headers: authHeaders(token) }),
+    ]);
+    if (!todayResponse.ok) throw new Error(await getErrorMessage(todayResponse));
+    if (!historyResponse.ok) throw new Error(await getErrorMessage(historyResponse));
+    const today: TodayResponse = await todayResponse.json();
+    const history: HistoryItem[] = await historyResponse.json();
+    return { today, history };
+  }
+
 export default function ChallengesScreen() {
   const { session } = useAuth();
   const [today, setToday] = useState<TodayResponse | null>(null);
@@ -45,21 +57,11 @@ export default function ChallengesScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
-  const loadChallenges = async (token: string) => {
-    const [todayResponse, historyResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/challenges/today`, { headers: authHeaders(token) }),
-      fetch(`${API_BASE_URL}/challenges/history`, { headers: authHeaders(token) }),
-    ]);
-    if (!todayResponse.ok) throw new Error(await getErrorMessage(todayResponse));
-    if (!historyResponse.ok) throw new Error(await getErrorMessage(historyResponse));
-    setToday(await todayResponse.json());
-    setHistory(await historyResponse.json());
-  };
+
 
   useEffect(() => {
     if (!session?.token) return;
-    setLoading(true);
-    loadChallenges(session.token)
+    loadChallenges(session.token).then((data) => { setToday(data.today); setHistory(data.history); })
       .catch((error: Error) => setMessage(error.message))
       .finally(() => setLoading(false));
   }, [session?.token]);
@@ -79,7 +81,7 @@ export default function ChallengesScreen() {
       });
       if (!response.ok) throw new Error(await getErrorMessage(response));
       setAnswerText('');
-      await loadChallenges(session.token);
+      await loadChallenges(session.token).then((data) => { setToday(data.today); setHistory(data.history); });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not submit challenge answer');
     } finally {

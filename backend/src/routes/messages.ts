@@ -1,3 +1,4 @@
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Message } from "../models/Message";
 import { authMiddleware } from "../middleware/auth";
@@ -20,8 +21,7 @@ router.get("/history", async (req: Request, res: Response) => {
 
     return res.json(messages);
   } catch (error: any) {
-    console.error("Get message history error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 });
 

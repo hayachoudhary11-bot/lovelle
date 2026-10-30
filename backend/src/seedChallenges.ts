@@ -21,8 +21,8 @@ const questions = [
 ];
 
 async function seedChallenges() {
-  if (!process.env.MONGO_URI) throw new Error("MONGO_URI is not configured");
-  await mongoose.connect(process.env.MONGO_URI);
+  if (!process.env.MONGO_URI && !process.env.MONGODB_URI) throw new Error("MONGO_URI is not configured");
+  await mongoose.connect((process.env.MONGO_URI || process.env.MONGODB_URI)!);
   await ChallengeQuestion.bulkWrite(
     questions.map((question) => ({
       updateOne: {
@@ -37,7 +37,7 @@ async function seedChallenges() {
 }
 
 seedChallenges().catch(async (error) => {
-  console.error("Challenge seed failed:", error);
+  console.error("Challenge seed failed:", error?.name || "Error");
   await mongoose.disconnect();
   process.exit(1);
 });

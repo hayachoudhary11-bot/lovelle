@@ -1,4 +1,11 @@
-export const API_BASE_URL = "http://192.168.1.6:4000";
+import { Platform } from 'react-native';
+
+const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+if (!configuredUrl && !__DEV__) throw new Error('EXPO_PUBLIC_API_URL is required for production builds');
+export const API_BASE_URL = (configuredUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000')).replace(/\/+$/, '');
+if (!/^https?:\/\//.test(API_BASE_URL) || (!__DEV__ && !API_BASE_URL.startsWith('https://'))) {
+  throw new Error('EXPO_PUBLIC_API_URL must use HTTPS in production');
+}
 
 export async function getErrorMessage(response: Response): Promise<string> {
   try {

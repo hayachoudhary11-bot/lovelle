@@ -1,3 +1,4 @@
+import { sendError } from "../middleware/errors";
 import { Router, Request, Response } from "express";
 import { Couple } from "../models/Couple";
 import { Photo } from "../models/Photo";
@@ -27,7 +28,7 @@ const handleFeaturedPhoto = async (req: Request, res: Response) => {
     const couple = await Couple.findByIdAndUpdate(
       coupleId,
       { featuredPhotoId: photo._id },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!couple) {
       return res.status(404).json({ error: "Couple not found" });
@@ -41,8 +42,7 @@ const handleFeaturedPhoto = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Set featured photo error:", error.message);
-    return res.status(500).json({ error: error.message || "Server error" });
+    return sendError(res, error);
   }
 };
 router.post("/featured-photo", handleFeaturedPhoto);

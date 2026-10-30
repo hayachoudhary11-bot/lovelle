@@ -64,13 +64,14 @@ export default function DrawingScreen() {
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const drawingPointsRef = useRef<Point[]>([]);
   const selectedColorRef = useRef(selectedColor);
-  selectedColorRef.current = selectedColor;
+  useEffect(() => { selectedColorRef.current = selectedColor; }, [selectedColor]);
 
   useEffect(() => {
     if (!session?.token) return;
     let mounted = true;
     const socket = io(API_BASE_URL, {
       auth: { token: session.token },
+      transports: ['websocket'],
     });
     socketRef.current = socket;
 
@@ -88,7 +89,7 @@ export default function DrawingScreen() {
       }
     };
 
-    const handleConnect = () => socket.emit('join-board');
+    const handleConnect = () => { setMessage(''); socket.emit('join-board'); void loadStrokes(); };
     const handleStroke = (stroke: Stroke) => {
       if (mounted) {
         setStrokes((currentStrokes) =>
@@ -123,6 +124,10 @@ export default function DrawingScreen() {
   const finishStroke = () => {
     const points = drawingPointsRef.current;
     if (!points.length) return;
+    if (!socketRef.current?.connected) {
+      setMessage('Reconnect before drawing so your changes can be saved.');
+      drawingPointsRef.current = []; setCurrentPoints([]); return;
+    }
     const stroke: Stroke = {
       points,
       color: selectedColorRef.current,
@@ -136,7 +141,9 @@ export default function DrawingScreen() {
     setCurrentPoints([]);
   };
 
-  const panResponder = useRef(
+  // PanResponder stores these event callbacks; construction does not read their refs.
+  // eslint-disable-next-line react-hooks/refs
+  const [panResponder] = useState(() =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -150,10 +157,10 @@ export default function DrawingScreen() {
         drawingPointsRef.current = [...drawingPointsRef.current, point];
         setCurrentPoints((points) => [...points, point]);
       },
-      onPanResponderRelease: finishStroke,
-      onPanResponderTerminate: finishStroke,
+      onPanResponderRelease: () => finishStroke(),
+      onPanResponderTerminate: () => finishStroke(),
     }),
-  ).current;
+  );
 
   const clearBoard = async () => {
     if (!session?.token) return;

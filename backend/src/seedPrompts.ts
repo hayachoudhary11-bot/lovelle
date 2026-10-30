@@ -24,8 +24,8 @@ const prompts = [
 ];
 
 async function seedPrompts() {
-  if (!process.env.MONGO_URI) throw new Error("MONGO_URI is not configured");
-  await mongoose.connect(process.env.MONGO_URI);
+  if (!process.env.MONGO_URI && !process.env.MONGODB_URI) throw new Error("MONGO_URI is not configured");
+  await mongoose.connect((process.env.MONGO_URI || process.env.MONGODB_URI)!);
   await Prompt.bulkWrite(
     prompts.map((prompt) => ({
       updateOne: {
@@ -40,7 +40,7 @@ async function seedPrompts() {
 }
 
 seedPrompts().catch(async (error) => {
-  console.error("Prompt seed failed:", error);
+  console.error("Prompt seed failed:", error?.name || "Error");
   await mongoose.disconnect();
   process.exit(1);
 });

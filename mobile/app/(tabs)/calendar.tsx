@@ -18,6 +18,15 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString();
 }
 
+async function loadEvents(token: string) {
+    const response = await fetch(`${API_BASE_URL}/events`, {
+      headers: authHeaders(token),
+    });
+    if (!response.ok) throw new Error(await getErrorMessage(response));
+    const items = await response.json();
+    return items;
+  }
+
 export default function CalendarScreen() {
   const { session } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,17 +37,11 @@ export default function CalendarScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const loadEvents = async (token: string) => {
-    const response = await fetch(`${API_BASE_URL}/events`, {
-      headers: authHeaders(token),
-    });
-    if (!response.ok) throw new Error(await getErrorMessage(response));
-    setEvents(await response.json());
-  };
+
 
   useEffect(() => {
     if (!session?.token) return;
-    loadEvents(session.token).catch((error: Error) => setMessage(error.message));
+    loadEvents(session.token).then(setEvents).catch((error: Error) => setMessage(error.message));
   }, [session?.token]);
 
   const addEvent = async () => {

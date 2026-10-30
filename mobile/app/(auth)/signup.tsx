@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/context/auth';
 import { GradientButton } from '@/components/gradient-button';

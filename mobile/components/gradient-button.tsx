@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Animated, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
-import { useRef } from 'react';
+import { useState } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -12,7 +12,7 @@ type GradientButtonProps = PressableProps & {
 
 export function GradientButton({ children, style, ...props }: GradientButtonProps) {
   const colors = Colors[useColorScheme() ?? 'light'];
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const animateScale = (toValue: number) => {
     Animated.spring(scale, { toValue, useNativeDriver: true, speed: 28, bounciness: 4 }).start();
@@ -45,7 +45,7 @@ export function GradientButton({ children, style, ...props }: GradientButtonProp
 
 const styles = {
   fill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 18,
   } satisfies ViewStyle,
 };

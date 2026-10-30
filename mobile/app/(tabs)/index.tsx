@@ -1,9 +1,9 @@
+import { confirmDelete } from '@/lib/confirm-delete';
 import { useCallback, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -151,37 +151,19 @@ export default function HomeScreen() {
 
   const deleteNote = (noteId: string) => {
     if (!session?.token) return;
-    Alert.alert(
-      "Delete note?",
-      "This will remove it from the shared couple account.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setMessage("");
-            try {
-              const response = await fetch(`${API_BASE_URL}/notes/${noteId}`, {
-                method: "DELETE",
-                headers: authHeaders(session.token),
-              });
-              if (!response.ok)
-                throw new Error(await getErrorMessage(response));
-              setNotes((currentNotes) =>
-                currentNotes.filter((note) => note._id !== noteId),
-              );
-            } catch (error) {
-              setMessage(
-                error instanceof Error
-                  ? error.message
-                  : "Could not delete note",
-              );
-            }
-          },
-        },
-      ],
-    );
+    confirmDelete('Delete note?', 'This will remove it from the shared couple account.', async () => {
+      setMessage("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/notes/${noteId}`, {
+          method: "DELETE",
+          headers: authHeaders(session.token),
+        });
+        if (!response.ok) throw new Error(await getErrorMessage(response));
+        setNotes((currentNotes) => currentNotes.filter((note) => note._id !== noteId));
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Could not delete note");
+      }
+    });
   };
 
   return (
@@ -205,7 +187,7 @@ export default function HomeScreen() {
         <Text style={styles.featureEyebrow}>MAKE TIME FOR EACH OTHER</Text>
         <Text style={[styles.featureTitle, { color: colors.homeText }]}>What do you feel like doing?</Text>
         <View style={styles.featureGrid}>
-          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/?section=notes')}>
+          <Pressable style={[styles.featureCard, { backgroundColor: colors.homeCard, borderColor: colors.homeBorder }]} onPress={() => router.push('/(tabs)?section=notes')}>
             <View style={[styles.featureIcon, { backgroundColor: '#f9d8ea' }]}>
               <IconSymbol name="heart" size={22} color={colors.loveAccent} />
             </View>

@@ -4,32 +4,48 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.vercel.json",
     "start": "node dist/index.js",
     "seed:prompts": "ts-node src/seedPrompts.ts",
     "seed:challenges": "ts-node src/seedChallenges.ts",
     "test:apis": "ts-node src/testAllApis.ts",
-    "test": "npm run test:apis"
+    "test": "npm run build && node --test test/*.test.cjs",
+    "seed:production": "node dist/seedPrompts.js && node dist/seedChallenges.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "Lovelle couples app backend - Express + TypeScript + MongoDB",
   "dependencies": {
+    "@socket.io/mongo-adapter": "^0.4.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.2",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
+    "mongodb-memory-server": "^11.3.0",
+    "socket.io-client": "^4.8.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
+  },
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "disablePostinstall": true
+    }
   }
 }

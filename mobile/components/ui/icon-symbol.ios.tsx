@@ -1,5 +1,6 @@
+import type { IconSymbolName } from './icon-symbol';
 import { SymbolView, SymbolViewProps, SymbolWeight } from 'expo-symbols';
-import { StyleProp, ViewStyle } from 'react-native';
+import { OpaqueColorValue, StyleProp, ViewStyle } from 'react-native';
 
 export function IconSymbol({
   name,
@@ -9,14 +10,16 @@ export function IconSymbol({
   weight = 'regular',
   focused = true,
 }: {
-  name: SymbolViewProps['name'];
+  name: IconSymbolName;
   size?: number;
-  color: string;
+  color: string | OpaqueColorValue;
   style?: StyleProp<ViewStyle>;
   weight?: SymbolWeight;
   focused?: boolean;
 }) {
-  const symbolName = focused ? name : name.replace('.fill', '') as SymbolViewProps['name'];
+  const aliases: Partial<Record<IconSymbolName, string>> = { gallery: 'photo', prompts: 'questionmark.circle', challenges: 'flag', drawing: 'pencil', settings: 'gearshape' };
+  const mapped = aliases[name] ?? name;
+  const symbolName = (focused ? mapped : mapped.replace('.fill', '')) as SymbolViewProps['name'];
 
   return (
     <SymbolView

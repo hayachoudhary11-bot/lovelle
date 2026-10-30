@@ -1,12 +1,12 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>['name']>;
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
  * Add your SF Symbols to Material Icons mappings here.
@@ -32,9 +32,9 @@ const MAPPING = {
   gearshape: 'settings',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-} as IconMapping;
+} as const satisfies IconMapping;
 
-const OUTLINE_MAPPING = {
+const OUTLINE_MAPPING: Partial<Record<IconSymbolName, ComponentProps<typeof MaterialIcons>['name']>> = {
   'house.fill': 'home',
   'message.fill': 'chat-bubble-outline',
   'paperplane.fill': 'send',
@@ -72,5 +72,5 @@ export function IconSymbol({
   weight?: SymbolWeight;
   focused?: boolean;
 }) {
-  return <MaterialIcons color={color} size={size} name={(focused ? MAPPING : OUTLINE_MAPPING)[name]} style={style} />;
+  return <MaterialIcons color={color} size={size} name={(focused ? MAPPING[name] : OUTLINE_MAPPING[name]) ?? MAPPING[name]} style={style} />;
 }

@@ -44,7 +44,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!storedSession) return;
         const parsedSession = JSON.parse(storedSession) as Session;
         const payload = decodeToken(parsedSession.token);
-        if (payload.exp && payload.exp * 1000 <= Date.now()) return;
+        if (!payload.exp || payload.exp * 1000 <= Date.now()) { void AsyncStorage.removeItem(SESSION_KEY); return; }
         setSession(parsedSession);
       })
       .catch(() => AsyncStorage.removeItem(SESSION_KEY))
@@ -72,7 +72,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const signUp = async (email: string, password: string, name: string) => {
     const signupBody = JSON.stringify({ email: email.trim(), password, name: name.trim() });
-    console.log('[signup] request body:', signupBody);
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -18,3 +18,9 @@ yarn-error.log*
 # OS and editor files
 .DS_Store
 .vscode/
+
+# Local tooling and hosting state
+.vercel/
+.expo/
+coverage/
+*.tsbuildinfo
