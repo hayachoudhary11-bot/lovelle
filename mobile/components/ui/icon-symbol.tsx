@@ -14,6 +14,8 @@ export type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  fingerprint: 'fingerprint', gamepad: 'sports-esports', flame: 'local-fire-department', 'list.bullet': 'format-list-bulleted', location: 'location-on', 'battery.full': 'battery-full',
+
   'house.fill': 'home',
   'message.fill': 'chat',
   'paperplane.fill': 'send',

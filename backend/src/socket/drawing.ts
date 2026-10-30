@@ -10,6 +10,42 @@ type AuthenticatedSocket = Socket & {
 import { isStrokePayload } from "../validation";
 type MessagePayload = { text: string };
 
+type TouchPayload = {
+  source?: string;
+};
+
+type AffectionPayload = {
+  type?:
+    | "kiss"
+    | "hug"
+    | "miss-you"
+    | "thinking-of-you"
+    | "good-morning"
+    | "good-night";
+};
+
+function isTouchPayload(payload: unknown): payload is TouchPayload {
+  return (
+    !!payload &&
+    typeof payload === "object" &&
+    typeof (payload as { source?: unknown }).source === "string"
+  );
+}
+
+function isAffectionPayload(payload: unknown): payload is AffectionPayload {
+  if (!payload || typeof payload !== "object") return false;
+  const type = (payload as { type?: unknown }).type;
+  return (
+    type === "kiss" ||
+    type === "hug" ||
+    type === "miss-you" ||
+    type === "thinking-of-you" ||
+    type === "good-morning" ||
+    type === "good-night"
+  );
+}
+
+
 function isMessagePayload(payload: unknown): payload is MessagePayload {
   return !!payload && typeof payload === "object" && typeof (payload as { text?: unknown }).text === "string";
 }
@@ -67,6 +103,47 @@ export function registerDrawingSocket(io: Server) {
       socket.join(room);
       socket.emit("board-joined", { room });
     });
+
+    socket.on(
+      "touch",
+      (payload: unknown, callback?: (response: { error?: string }) => void) => {
+        const ack = typeof callback === "function" ? callback : () => {};
+        if (!isTouchPayload(payload)) {
+          ack({ error: "Invalid touch payload" });
+          return;
+        }
+
+        const touchEvent = {
+          fromUserId: socket.user.userId,
+          source: payload.source,
+          timestamp: new Date().toISOString(),
+        };
+
+        socket.to(room).emit("partner-touch", touchEvent);
+        ack({});
+      },
+    );
+
+    socket.on(
+      "affection",
+      (payload: unknown, callback?: (response: { error?: string }) => void) => {
+        const ack = typeof callback === "function" ? callback : () => {};
+        if (!isAffectionPayload(payload)) {
+          ack({ error: "Invalid affection payload" });
+          return;
+        }
+
+        const affectionEvent = {
+          fromUserId: socket.user.userId,
+          type: payload.type,
+          timestamp: new Date().toISOString(),
+        };
+
+        socket.to(room).emit("partner-affection", affectionEvent);
+        ack({});
+      },
+    );
+
 
     socket.on("stroke", async (payload: unknown, callback?: (response: { error?: string; stroke?: unknown }) => void) => {
       const ack = typeof callback === "function" ? callback : () => {};

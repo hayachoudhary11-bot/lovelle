@@ -15,6 +15,7 @@ import drawingRoutes from "./routes/drawing";
 import messagesRoutes from "./routes/messages";
 import photosRoutes from "./routes/photos";
 import eventsRoutes from "./routes/events";
+import bucketListRoutes from "./routes/bucket-list";
 import tasksRoutes from "./routes/tasks";
 import promptsRoutes from "./routes/prompts";
 import challengesRoutes from "./routes/challenges";
@@ -71,6 +72,7 @@ export function createApplication(config: AppConfig) {
   app.use("/photos", photosRoutes);
   app.use("/events", eventsRoutes);
   app.use("/tasks", tasksRoutes);
+  app.use("/bucket-list", bucketListRoutes);
   app.use("/prompts", promptsRoutes);
   app.use("/challenges", challengesRoutes);
   app.use("/couples", couplesRoutes);

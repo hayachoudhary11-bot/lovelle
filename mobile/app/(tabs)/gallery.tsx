@@ -11,12 +11,12 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { useAuth } from '@/context/auth';
-import { GradientButton } from '@/components/gradient-button';
-import { EmptyState } from '@/components/empty-state';
-import { API_BASE_URL, authHeaders, getErrorMessage } from '@/lib/api';
+import { useAuth } from "@/context/auth";
+import { GradientButton } from "@/components/gradient-button";
+import { EmptyState } from "@/components/empty-state";
+import { API_BASE_URL, authHeaders, getErrorMessage } from "@/lib/api";
 
 const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
@@ -50,10 +50,10 @@ async function loadPhotos(token: string) {
 export default function GalleryScreen() {
   const { session } = useAuth();
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState("");
   const [featuredPhotoId, setFeaturedPhotoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
 
 
@@ -71,12 +71,12 @@ export default function GalleryScreen() {
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) { setMessage('Photo uploads are not configured yet.'); return; }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setMessage('Photo library permission is required to choose an image.');
+      setMessage("Photo library permission is required to choose an image.");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsEditing: false,
       quality: 0.9,
     });
@@ -84,7 +84,7 @@ export default function GalleryScreen() {
 
     const asset = result.assets[0];
     setLoading(true);
-    setMessage('');
+    setMessage("");
     try {
       const formData = new FormData();
       if (Platform.OS === 'web') {
@@ -103,11 +103,13 @@ export default function GalleryScreen() {
         throw new Error(`Photo upload failed (${cloudinaryResponse.status}). Please try again.`);
       }
 
-      const cloudinaryPhoto = JSON.parse(cloudinaryBody) as CloudinaryUploadResult;
+      const cloudinaryPhoto = JSON.parse(
+        cloudinaryBody,
+      ) as CloudinaryUploadResult;
       const backendResponse = await fetch(`${API_BASE_URL}/photos`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...authHeaders(session.token),
         },
         body: JSON.stringify({
@@ -119,14 +121,17 @@ export default function GalleryScreen() {
           caption: caption.trim(),
         }),
       });
-      if (!backendResponse.ok) throw new Error(await getErrorMessage(backendResponse));
+      if (!backendResponse.ok)
+        throw new Error(await getErrorMessage(backendResponse));
 
       const savedPhoto: Photo = await backendResponse.json();
       setPhotos((currentPhotos) => [savedPhoto, ...currentPhotos]);
-      setCaption('');
+      setCaption("");
     } catch (error) {
-      console.log('[Gallery] full upload error:', error);
-      setMessage(error instanceof Error ? error.message : 'Could not upload photo');
+      console.log("[Gallery] full upload error:", error);
+      setMessage(
+        error instanceof Error ? error.message : "Could not upload photo",
+      );
     } finally {
       setLoading(false);
     }
@@ -150,22 +155,24 @@ export default function GalleryScreen() {
 
   const setAsPhotoFrame = async (photoId: string) => {
     if (!session?.token) return;
-    setMessage('');
+    setMessage("");
     try {
       const response = await fetch(`${API_BASE_URL}/couples/featured-photo`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...authHeaders(session.token),
         },
         body: JSON.stringify({ photoId }),
       });
       if (!response.ok) throw new Error(await getErrorMessage(response));
       setFeaturedPhotoId(photoId);
-      setMessage('Photo Frame updated');
+      setMessage("Photo Frame updated");
     } catch (error) {
-      console.log('[Gallery] set featured photo error:', error);
-      setMessage(error instanceof Error ? error.message : 'Could not set Photo Frame');
+      console.log("[Gallery] set featured photo error:", error);
+      setMessage(
+        error instanceof Error ? error.message : "Could not set Photo Frame",
+      );
     }
   };
 
@@ -179,8 +186,16 @@ export default function GalleryScreen() {
         value={caption}
         onChangeText={setCaption}
       />
-      <GradientButton style={styles.button} onPress={pickAndUploadPhoto} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fcfaff" /> : <Text style={styles.buttonText}>Choose and upload photo</Text>}
+      <GradientButton
+        style={styles.button}
+        onPress={pickAndUploadPhoto}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fcfaff" />
+        ) : (
+          <Text style={styles.buttonText}>Choose and upload photo</Text>
+        )}
       </GradientButton>
       {!!message && <Text style={styles.error}>{message}</Text>}
       <FlatList
@@ -189,14 +204,31 @@ export default function GalleryScreen() {
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.grid}
-        ListEmptyComponent={<EmptyState message="Your favorite memories will live here." />}
+        ListEmptyComponent={
+          <EmptyState message="Your favorite memories will live here." />
+        }
         renderItem={({ item }) => (
           <View style={styles.photoCard}>
-            <Image source={{ uri: item.thumbUrl || item.url }} style={styles.photo} contentFit="cover" />
-            {!!item.caption && <Text style={styles.caption} numberOfLines={2}>{item.caption}</Text>}
+            <Image
+              source={{ uri: item.thumbUrl || item.url }}
+              style={styles.photo}
+              contentFit="cover"
+            />
+            {!!item.caption && (
+              <Text style={styles.caption} numberOfLines={2}>
+                {item.caption}
+              </Text>
+            )}
             <View style={styles.photoActions}>
-              <Pressable style={styles.frameButton} onPress={() => setAsPhotoFrame(item._id)}>
-                <Text style={styles.frameButtonText}>{featuredPhotoId === item._id ? 'Photo Frame' : 'Set as Frame'}</Text>
+              <Pressable
+                style={styles.frameButton}
+                onPress={() => setAsPhotoFrame(item._id)}
+              >
+                <Text style={styles.frameButtonText}>
+                  {featuredPhotoId === item._id
+                    ? "Photo Frame"
+                    : "Set as Frame"}
+                </Text>
               </Pressable>
               <Pressable onPress={() => deletePhoto(item._id)} hitSlop={8}>
                 <Text style={styles.delete}>Delete</Text>
@@ -210,21 +242,73 @@ export default function GalleryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 72, backgroundColor: '#f4efff' },
-  title: { fontSize: 32, fontWeight: '700', color: '#302443', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#766889', marginBottom: 20 },
-  input: { backgroundColor: '#fcfaff', borderColor: '#dfd1f1', borderWidth: 1, borderRadius: 18, padding: 14, fontSize: 16, marginBottom: 12, color: '#302443' },
-  button: { minHeight: 50, backgroundColor: '#7651b8', borderRadius: 18, padding: 15, alignItems: 'center', justifyContent: 'center', shadowColor: '#2e2050', shadowOpacity: 0.14, shadowRadius: 8, elevation: 3 },
-  buttonText: { color: '#fcfaff', fontSize: 16, fontWeight: '700' },
-  error: { color: '#9b496e', marginTop: 12 },
+  container: {
+    flex: 1,
+    padding: 24,
+    paddingTop: 72,
+    backgroundColor: "#f4efff",
+  },
+  title: { fontSize: 32, fontWeight: "700", color: "#302443", marginBottom: 8 },
+  subtitle: { fontSize: 16, color: "#766889", marginBottom: 20 },
+  input: {
+    backgroundColor: "#fcfaff",
+    borderColor: "#dfd1f1",
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    fontSize: 16,
+    marginBottom: 12,
+    color: "#302443",
+  },
+  button: {
+    minHeight: 50,
+    backgroundColor: "#7651b8",
+    borderRadius: 18,
+    padding: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#2e2050",
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  buttonText: { color: "#fcfaff", fontSize: 16, fontWeight: "700" },
+  error: { color: "#9b496e", marginTop: 12 },
   grid: { paddingTop: 16, paddingBottom: 24 },
   row: { gap: 10, marginBottom: 10 },
-  empty: { color: '#766889', paddingTop: 24 },
-  photoCard: { flex: 1, backgroundColor: '#fcfaff', borderColor: '#dfd1f1', borderWidth: 1, borderRadius: 18, overflow: 'hidden', shadowColor: '#2e2050', shadowOpacity: 0.08, shadowRadius: 9, elevation: 2 },
-  photo: { width: '100%', aspectRatio: 1 },
-  caption: { color: '#302443', padding: 8, fontSize: 15, lineHeight: 20, fontWeight: '700' },
+  empty: { color: "#766889", paddingTop: 24 },
+  photoCard: {
+    flex: 1,
+    backgroundColor: "#fcfaff",
+    borderColor: "#dfd1f1",
+    borderWidth: 1,
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowColor: "#2e2050",
+    shadowOpacity: 0.08,
+    shadowRadius: 9,
+    elevation: 2,
+  },
+  photo: { width: "100%", aspectRatio: 1 },
+  caption: {
+    color: "#302443",
+    padding: 8,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
   photoActions: { padding: 8, gap: 8 },
-  frameButton: { backgroundColor: '#d9c5f4', borderRadius: 14, padding: 8, alignItems: 'center' },
-  frameButtonText: { color: '#62409d', fontSize: 13, fontWeight: '700' },
-  delete: { color: '#9b496e', fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
+  frameButton: {
+    backgroundColor: "#d9c5f4",
+    borderRadius: 14,
+    padding: 8,
+    alignItems: "center",
+  },
+  frameButtonText: { color: "#62409d", fontSize: 13, fontWeight: "700" },
+  delete: {
+    color: "#9b496e",
+    fontWeight: "700",
+    textAlign: "center",
+    paddingVertical: 4,
+  },
 });

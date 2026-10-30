@@ -101,6 +101,18 @@ test('isolated API, privacy, concurrency and distributed socket regression suite
     const output = await child(['-r', 'ts-node/register', 'src/testAllApis.ts']);
     assert.match(output, /30 PASSED, 0 FAILED/);
   });
+  await t.test('merged bucket list and weekly activity routes work and remain private', async () => {
+    const added = await request('/bucket-list', { token: owner.token, body: { text: 'Travel together' } });
+    assert.equal(added.status, 201);
+    assert.deepEqual((await request('/bucket-list', { token: outsider.token })).data, []);
+    assert.equal((await request('/bucket-list/' + added.data._id, { token: outsider.token, method: 'PATCH' })).status, 404);
+    assert.equal((await request('/bucket-list/' + added.data._id, { token: partner.token, method: 'PATCH' })).data.done, true);
+    const activity = await request('/couples/activity/week', { token: owner.token });
+    assert.equal(activity.status, 200);
+    assert.equal(activity.data.activity.length, 7);
+    assert.ok(activity.data.activity.some((day) => day.count > 0));
+    assert.equal((await request('/bucket-list/' + added.data._id, { token: owner.token, method: 'DELETE' })).status, 200);
+  });
   await t.test('unanswered partner responses cannot be read through history', async () => {
     for (const feature of ['prompts', 'challenges']) {
       assert.equal((await request(`/${feature}/answer`, { token: owner.token, body: { answerText: 'secret answer' } })).status, 201);
@@ -119,6 +131,12 @@ test('isolated API, privacy, concurrency and distributed socket regression suite
     const a = await connect(base[0], owner.token);
     const b = await connect(base[1], partner.token);
     const c = await connect(base[1], outsider.token);
+    const affection = once(b, 'partner-affection');
+    await a.timeout(5000).emitWithAck('affection', { type: 'hug' });
+    assert.equal((await affection)[0].type, 'hug');
+    const touch = once(b, 'partner-touch');
+    await a.timeout(5000).emitWithAck('touch', { source: 'thumb-touch' });
+    assert.equal((await touch)[0].source, 'thumb-touch');
     let leaked = false;
     c.on('new-message', () => { leaked = true; });
     const received = once(b, 'new-message');

@@ -17,7 +17,7 @@ export function IconSymbol({
   weight?: SymbolWeight;
   focused?: boolean;
 }) {
-  const aliases: Partial<Record<IconSymbolName, string>> = { gallery: 'photo', prompts: 'questionmark.circle', challenges: 'flag', drawing: 'pencil', settings: 'gearshape' };
+  const aliases: Partial<Record<IconSymbolName, string>> = { gallery: 'photo', prompts: 'questionmark.circle', challenges: 'flag', drawing: 'pencil', settings: 'gearshape', fingerprint: 'touchid', 'battery.full': 'battery.100' };
   const mapped = aliases[name] ?? name;
   const symbolName = (focused ? mapped : mapped.replace('.fill', '')) as SymbolViewProps['name'];
 

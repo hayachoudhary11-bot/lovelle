@@ -71,6 +71,8 @@ Backend tests create and destroy an isolated MongoDB replica set, seed disposabl
 
 The backend audit is clean after compatible dependency updates. Expo SDK 57 still reports 11 transitive findings (6 high, 5 low): the `query-string` / `decode-uri-component` chain used by routing, and `zod` / `deepmerge` used by Expo tooling. Compatible updates do not resolve these. `npm audit fix --force` proposes incompatible Expo/Router versions (including an Expo downgrade); it must not be used blindly. A fully clean frontend audit remains a release follow-up requiring upstream fixes or a separately validated SDK migration. The unused ngrok tunnel dependency was removed; standard local development still works.
 
+The latest collaborator features (cards, bucket list, affection, thumb touch and weekly activity) are preserved. Regression coverage also checks weekly activity, bucket-list isolation and cross-instance affection/touch delivery.
+
 The legacy `npm run test:apis` command requires `TEST_BASE_URL` and `ALLOW_TEST_WRITES=true`; only point it at a disposable environment because it creates records. CI performs builds, backend tests, type checking and linting automatically.
 
 After deployment, smoke-test two separate accounts: signup/login, create/join, notes, tasks, calendar, upload, prompts, chat and drawing. Keep two browser sessions open to verify synchronization and reconnect after refreshing. Local checks do not verify your Vercel account, Atlas network access or Cloudinary preset settings.
